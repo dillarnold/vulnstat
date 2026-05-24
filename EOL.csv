@@ -1,0 +1,6 @@
+afgahg,Plugin Name,DNS Name,dfg,IP Address,Repository,Severity
+,CentOS Linux SEoL (3.x),ops-charlie-035.demo.net,heeh,10.24.0.35,LEG-LEGACY-ERP-OPS,High
+dfgd,CentOS Linux SEoL (4.x),dmz-echo-031.example.com.au,,10.24.0.31,LEG-LEGACY-IDM-APP,Critical
+fdsgdfgd,Oracle Linux SEoL (6.x),node-fusion-099.labs.local,hteh,10.24.0.99,LEG-LEGACY-HR-OPS,Critical
+,CentOS Linux SEoL (5.x),edge-matrix-011.uat.example,,10.24.0.11,LEG-LEGACY-IDM-APP,High
+ddgg,CentOS Linux SEoL (3.x),east-bravo-040.demo.net,,10.24.0.40,LEG-LEGACY-ERP-OPS,High
