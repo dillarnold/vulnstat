@@ -1169,26 +1169,68 @@ function exportDashboard() {
   if (isAll && !hasRepoFilter) {
     exportRaw = raw;
   } else {
-    var repoSet = {};
-    if (!isAll) {
-      var ownerLabel = activeTabId.replace(/^owner_/,''), ownerData=null;
-      for (var i=0; i<globalOwners.length; i++) { if(globalOwners[i].owner===ownerLabel){ownerData=globalOwners[i];break;} }
-      if (ownerData) ownerData.repos.forEach(function(r){ repoSet[r]=true; });
-    } else {
-      Object.keys(raw.repoOwnerMap||{}).forEach(function(r){ repoSet[r]=true; });
+    // Determine the exact owner being exported (null when on the All tab)
+    var ownerLabel = isAll ? null : activeTabId.replace(/^owner_/,'');
+
+    // Start from the set of assets actually shown on the active tab. Each tab's
+    // asset list already correctly reflects owner membership, so this is the
+    // authoritative source — never re-derive ownership from repoOwnerMap, which
+    // can map a shared repo to a different owner (the cause of issue 1).
+    var tabAssets = null;
+    for (var ti=0; ti<globalTabs.length; ti++) {
+      if (globalTabs[ti].id === activeTabId) { tabAssets = globalTabs[ti].assets; break; }
     }
+    if (!tabAssets) tabAssets = raw.assets;
+
+    // Apply any active repo filter on top of the tab's assets
+    var filteredAssets = tabAssets;
     if (hasRepoFilter) {
-      var restricted = {};
-      repoFilterKeys.forEach(function(r){ if(repoSet[r]||isAll) restricted[r]=true; });
-      repoSet = restricted;
+      filteredAssets = filteredAssets.filter(function(a){ return fs.repoFilters[a.repo]; });
     }
-    var filteredAssets = raw.assets.filter(function(a){ return repoSet[a.repo]; });
-    var filteredOwners = raw.owners.filter(function(o){ return o.repos.some(function(r){ return repoSet[r]; }); })
-      .map(function(o){ return { owner:o.owner, repos:o.repos.filter(function(r){ return repoSet[r]; }) }; });
+
+    // The repos genuinely present in the exported asset set
+    var repoSet = {};
+    filteredAssets.forEach(function(a){ repoSet[a.repo] = true; });
+
+    // Build owners and repoOwnerMap scoped strictly to this export.
+    // For an owner tab: every repo maps to THAT owner (matching what is displayed).
+    // For the All tab with a repo filter: preserve each repo's true owner.
+    var filteredOwners = [];
     var filteredRepoOwnerMap = {};
-    Object.keys(raw.repoOwnerMap||{}).forEach(function(r){ if(repoSet[r]) filteredRepoOwnerMap[r]=raw.repoOwnerMap[r]; });
+    if (!isAll) {
+      var ownerRepos = [];
+      Object.keys(repoSet).forEach(function(r){
+        ownerRepos.push(r);
+        filteredRepoOwnerMap[r] = ownerLabel;
+      });
+      if (ownerRepos.length) filteredOwners.push({ owner:ownerLabel, repos:ownerRepos });
+    } else {
+      raw.owners.forEach(function(o){
+        var keep = o.repos.filter(function(r){ return repoSet[r]; });
+        if (keep.length) filteredOwners.push({ owner:o.owner, repos:keep });
+      });
+      Object.keys(raw.repoOwnerMap||{}).forEach(function(r){
+        if (repoSet[r]) filteredRepoOwnerMap[r] = raw.repoOwnerMap[r];
+      });
+    }
+
+    // Scope EOL data to ONLY the exported assets, so no other owner's hostnames
+    // or IP addresses leak into the snapshot file (the cause of issue 2).
+    var exportEolKeys = [];
+    var exportEolPlugins = [];
+    if (raw.hasEOL) {
+      var seenKeys = {};
+      filteredAssets.forEach(function(a){
+        var dk = (a.dns||'').toLowerCase(), ik = (a.ip||'').toLowerCase();
+        if (a.isEOL) {
+          if (dk && !seenKeys[dk]) { seenKeys[dk]=true; exportEolKeys.push(dk); if (a.eolPlugin) exportEolPlugins.push([dk, a.eolPlugin]); }
+          if (ik && !seenKeys[ik]) { seenKeys[ik]=true; exportEolKeys.push(ik); if (a.eolPlugin) exportEolPlugins.push([ik, a.eolPlugin]); }
+        }
+      });
+    }
+
     exportRaw = { assets:filteredAssets, owners:filteredOwners, hasEOL:raw.hasEOL,
-      eolKeys:raw.eolKeys, eolPlugins:raw.eolPlugins,
+      eolKeys:exportEolKeys, eolPlugins:exportEolPlugins,
       repoOwnerMap:filteredRepoOwnerMap, reportDate:raw.reportDate||'' };
   }
   var label    = isAll ? 'snapshot' : activeTabId.replace(/^owner_/,'');
