@@ -427,7 +427,8 @@
           </div>
           <hr class="hdrop-sep">
           <div class="hdrop-title">Actions</div>
-          <button class="hdrop-item" onclick="exportDashboard()"><span class="tick">&#8595;</span>Export Snapshot</button>
+          <button class="hdrop-item" id="exp-full" onclick="exportDashboard('full')"><span class="tick">&#8595;</span>Export Full Snapshot</button>
+          <button class="hdrop-item" id="exp-view" onclick="exportDashboard('view')"><span class="tick">&#8595;</span>Export View Snapshot</button>
           <button class="hdrop-item" onclick="toggleTheme()"><span class="tick" id="theme-icon">&#9790;</span><span id="theme-label">Light Mode</span></button>
           <button class="hdrop-item" onclick="resetDashboard()"><span class="tick">&#8617;</span>Load New Files</button>
           <div class="hdrop-title" id="export-scope-note" style="color:var(--med); margin-top:8px; display:none; text-transform:none; letter-spacing:0; line-height:1.5;"></div>
@@ -556,7 +557,8 @@ var BAKED_STRIP  = new RegExp('<script[^>]*>\\s*window\\.' + BAKED_KEY + '\\s*=[
 // ══════════ STATE ══════════
 var state = { assetsText:null, reposText:null, eolText:null };
 var D = { assets:[], owners:[], repoOwnerMap:{}, hasEOL:false, hasOwners:false,
-          reportDate:'', title:'', classification:'', links:[] };
+          reportDate:'', title:'', classification:'', links:[],
+          aggMode:false, aggStats:null, aggRepos:null, viewLock:null };
 var ownerScope=null, breakdownSel={}, repoFilters={};
 var searches={ repo:'', asset:'', rep:'' };
 var sortState={ repo:{key:'avg',dir:'desc'}, asset:{key:'critical',dir:'desc'} };
@@ -713,6 +715,11 @@ function buildDashboard(baked){
       eolPlug={}; (baked.eolPlugins||[]).forEach(function(p){eolPlug[p[0]]=p[1];});
       hasEOL=baked.hasEOL||false; reportDate=baked.reportDate||'';
       title=baked.title||''; classification=baked.classification||''; links=baked.links||[];
+      // A view-scoped snapshot may carry precomputed aggregates instead of asset rows
+      D.aggMode  = !!baked.agg;
+      D.aggStats = baked.agg ? baked.agg.stats : null;
+      D.aggRepos = baked.agg ? baked.agg.repos : null;
+      D.viewLock = baked.viewLock || null;
     } else {
       assets=[];
       parseCSV(state.assetsText).forEach(function(r){
@@ -752,9 +759,10 @@ function buildDashboard(baked){
       title=(document.getElementById('setup-title')||{}).value||'';
       classification=(document.getElementById('setup-class')||{}).value||'';
       links=collectLinks();
+      D.aggMode=false; D.aggStats=null; D.aggRepos=null; D.viewLock=null;
     }
 
-    if(!assets.length) throw new Error('No valid asset rows found.');
+    if(!assets.length && !D.aggMode) throw new Error('No valid asset rows found.');
     assets.forEach(function(a){
       var dk=(a.dns||'').toLowerCase(), ik=(a.ip||'').toLowerCase();
       a.isEOL=!!(eolSet[dk]||eolSet[ik]);
@@ -763,7 +771,7 @@ function buildDashboard(baked){
 
     var rom={}; owners.forEach(function(o){ o.repos.forEach(function(r){ rom[r]=o.owner; }); });
     D.assets=assets; D.owners=owners; D.repoOwnerMap=rom;
-    D.hasEOL=hasEOL; D.hasOwners=owners.length>0;
+    D.hasEOL=hasEOL; D.hasOwners=(owners.length>0 && !D.aggMode);
     D.reportDate=reportDate; D.title=title||'Vulnerability Dashboard';
     D.classification=classification; D.links=links||[];
 
@@ -792,7 +800,8 @@ function buildDashboard(baked){
     document.getElementById('upload-screen').style.display='none';
     document.getElementById('dashboard-screen').style.display='block';
     syncSearchInputs(); syncMinInputs();
-    setView(currentView);
+    applyViewLock();
+    setView(D.viewLock || currentView);
     renderAll();
   } catch(err){
     var el=document.getElementById('upload-error');
@@ -959,6 +968,25 @@ function repoAggregates(assets){
     return { repo:r.repo, owner:r.owner, assets:r.assets, crit:r.crit, eol:r.eol,
              avg:r.assets?r.crit/r.assets:0, eolPct:r.assets?(r.eol/r.assets)*100:0 }; });
 }
+// In aggregate mode the snapshot carries precomputed figures rather than asset rows
+function currentStats(){ return D.aggMode ? D.aggStats : statsFor(viewAssets()); }
+function currentRepoAggs(){ return D.aggMode ? D.aggRepos.slice() : repoAggregates(viewAssets()); }
+
+// Lock the UI to a single view when the snapshot was exported view-scoped
+function applyViewLock(){
+  var locked = !!D.viewLock;
+  var sw = document.querySelector('#hd-cog-menu .view-switch');
+  var swTitle = sw ? sw.previousElementSibling : null;
+  if (sw) sw.style.display = locked ? 'none' : '';
+  if (swTitle && swTitle.className==='hdrop-title') swTitle.style.display = locked ? 'none' : '';
+  // A full export is impossible once asset rows have been stripped out
+  var ef = document.getElementById('exp-full');
+  if (ef) ef.style.display = D.aggMode ? 'none' : '';
+  // Division scoping needs asset rows to recompute against
+  var sc = document.getElementById('hd-scope-wrap');
+  if (sc && D.aggMode) sc.style.display = 'none';
+}
+
 function applyMinAssets(list,min){ return (min&&min>0)?list.filter(function(r){return r.assets>=min;}):list; }
 function statsFor(assets){
   var n=assets.length, crit=0, eol=0;
@@ -972,7 +1000,10 @@ function viewAssets(){
 }
 
 // ══════════ ORCHESTRATION ══════════
-function renderAll(){ renderStats(); renderRepoTable(); renderAssetTable(); renderReportView(); renderLinks(); updateExportNote(); }
+function renderAll(){
+  if(!D.aggMode){ renderStats(); renderRepoTable(); renderAssetTable(); renderLinks(); }
+  renderReportView(); updateExportNote();
+}
 function setView(v){
   currentView=v;
   document.getElementById('view-asset').classList.toggle('active',v==='asset');
@@ -980,6 +1011,7 @@ function setView(v){
   document.getElementById('vsw-asset').classList.toggle('active',v==='asset');
   document.getElementById('vsw-report').classList.toggle('active',v==='report');
   if(v==='report') renderReportView();
+  updateExportNote();
   var m=document.getElementById('hd-cog-menu'), b=document.getElementById('hd-cog-btn');
   if(m) m.classList.remove('open'); if(b) b.classList.remove('open');
 }
@@ -1178,6 +1210,7 @@ function vsRender(sh){
 
 // ══════════ REPO FILTERS ══════════
 function toggleRepoFilter(n){
+  if(D.aggMode) return;
   if(repoFilters[n]) delete repoFilters[n]; else repoFilters[n]=true;
   updateChips(); renderRepoTable(); renderAssetTable(); renderStats(); renderReportView(); updateExportNote();
 }
@@ -1207,7 +1240,7 @@ function donutSVG(pct){
     'stroke-dasharray="'+on.toFixed(2)+' '+(c-on).toFixed(2)+'"/></svg>';
 }
 function renderReportView(){
-  var s=statsFor(viewAssets());
+  var s=currentStats();
   var eolCard=D.hasEOL?
     ('<div class="rep-card c-eol"><div class="rep-label">EOL Assets</div>'+
      '<div class="rep-eol-inner">'+
@@ -1251,7 +1284,7 @@ function renderReportTable(){
   document.getElementById('rep-thead').innerHTML=cols.map(function(c){
     return '<th'+(c.left?' class="left"':'')+'>'+c.label+'</th>'; }).join('');
 
-  var data=applyMinAssets(repoAggregates(viewAssets()),minAssetsReport);
+  var data=applyMinAssets(currentRepoAggs(),minAssetsReport);
   var q=searches.rep.toLowerCase();
   if(q) data=data.filter(function(r){ return r.repo.toLowerCase().indexOf(q)!==-1; });
   data.sort(dens ? function(a,b){ return b.avg-a.avg; }
@@ -1325,7 +1358,7 @@ function exportAssetCSV(){
 }
 function exportReportCSV(){
   var dens=reportMode==='density', cols=reportVisibleCols();
-  var data=applyMinAssets(repoAggregates(viewAssets()),minAssetsReport);
+  var data=applyMinAssets(currentRepoAggs(),minAssetsReport);
   var q=searches.rep.toLowerCase();
   if(q) data=data.filter(function(r){ return r.repo.toLowerCase().indexOf(q)!==-1; });
   data.sort(dens?function(a,b){return b.avg-a.avg;}:function(a,b){return (b.eolPct-a.eolPct)||(b.eol-a.eol);});
@@ -1341,14 +1374,15 @@ function exportReportCSV(){
 // ══════════ SNAPSHOT EXPORT ══════════
 function updateExportNote(){
   var n=document.getElementById('export-scope-note'); if(!n) return;
-  var rc=Object.keys(repoFilters).length, msg='';
-  if(ownerScope&&rc) msg='\u26a0 Snapshot will contain only '+ownerScope+' + '+rc+' repo filter'+(rc>1?'s':'')+'.';
-  else if(ownerScope) msg='\u26a0 Snapshot will contain only '+ownerScope+' data.';
-  else if(rc) msg='\u26a0 Snapshot will contain only '+rc+' filtered repositor'+(rc>1?'ies':'y')+'.';
-  n.textContent=msg; n.style.display=msg?'block':'none';
+  var rc=Object.keys(repoFilters).length, parts=[];
+  if(ownerScope&&rc) parts.push('\u26a0 Scoped to '+ownerScope+' + '+rc+' repo filter'+(rc>1?'s':'')+'.');
+  else if(ownerScope) parts.push('\u26a0 Scoped to '+ownerScope+' only.');
+  else if(rc) parts.push('\u26a0 Scoped to '+rc+' filtered repositor'+(rc>1?'ies':'y')+'.');
+  n.innerHTML=parts.join('<br>'); n.style.display=parts.length?'block':'none';
 }
-function exportDashboard(){
+function exportDashboard(mode){
   var raw=window._raw; if(!raw) return;
+  mode = (mode==='view') ? 'view' : 'full';
   var rc=Object.keys(repoFilters), out;
   if(!ownerScope&&!rc.length){
     out={ assets:raw.assets, owners:raw.owners, hasEOL:raw.hasEOL, eolKeys:raw.eolKeys,
@@ -1384,6 +1418,26 @@ function exportDashboard(){
           repoOwnerMap:rom, reportDate:raw.reportDate||'', title:raw.title||'',
           classification:raw.classification||'', links:raw.links||[] };
   }
+  // ── View-scoped export: keep only what the active view actually renders ──
+  if (mode === 'view') {
+    out.viewLock = currentView;
+    if (currentView === 'report') {
+      // The Report View only ever renders repository aggregates and headline
+      // figures, so bake those and drop every asset-level record entirely —
+      // no hostnames, IPs, EOL plugin names, owner maps or links are included.
+      out.agg = { stats: currentStats(), repos: currentRepoAggs() };
+      out.assets = [];
+      out.eolKeys = [];
+      out.eolPlugins = [];
+      out.owners = [];
+      out.repoOwnerMap = {};
+      out.links = [];
+    }
+    // An Asset View snapshot still needs its asset rows, but drops nothing else.
+  } else {
+    out.viewLock = null;
+  }
+
   out.cfg = currentConfig();
 
   var payload = SCRIPT_OPEN + 'window.' + BAKED_KEY + ' = ' + JSON.stringify(out) + ';' + SCRIPT_CLOSE;
@@ -1391,7 +1445,7 @@ function exportDashboard(){
   html = html.replace('</head>', payload + '\n</head>');
   var b=new Blob([html],{type:'text/html'});
   var u=URL.createObjectURL(b), a=document.createElement('a');
-  a.href=u; a.download='vulnstat-'+scopeTag()+'.html';
+  a.href=u; a.download='vulnstat-'+(mode==='view'?currentView+'-':'')+scopeTag()+'.html';
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(u);
 }
 
@@ -1411,6 +1465,8 @@ function resetDashboard(){
   searches={repo:'',asset:'',rep:''};
   vs={data:[],makeRow:null,colSpan:1,measuredH:0,lastStart:0};
   currentView='asset'; reportMode='density'; minAssetsRepo=0; minAssetsReport=0;
+  D.aggMode=false; D.aggStats=null; D.aggRepos=null; D.viewLock=null;
+  applyViewLock();
   setView('asset');
 }
 
