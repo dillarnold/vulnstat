@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VulnStat — Vulnerability Reporting Dashboard</title>
+<title>Vulnerability Reporting Dashboard</title>
 <style>
   *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
   :root, [data-theme="dark"] {
@@ -12,125 +12,143 @@
     --txt:#dde2ee; --txt-head:#ffffff; --muted:#5a6175; --muted2:#3b4257; --tag-bg:#1d2130;
     --row-hover:rgba(255,255,255,0.025); --row-sel:rgba(91,143,255,0.14); --row-sel-hover:rgba(91,143,255,0.07);
     --chip-bg:rgba(91,143,255,0.15); --chip-filter-bg:rgba(91,143,255,0.06);
-    --mark-bg:rgba(245,197,24,0.28); --th-color:#ffffff;
+    --mark-bg:rgba(245,197,24,0.28); --th-color:#ffffff; --shadow:0 6px 22px rgba(0,0,0,0.45);
+    --donut-track:#252a38;
   }
   [data-theme="light"] {
-    --bg:#f0f2f7; --surface:#ffffff; --panel:#f5f6fa; --border:#d4d8e8; --border2:#bcc1d4;
-    --txt:#1e2235; --txt-head:#0a0c14; --muted:#7a82a0; --muted2:#a8b0c8; --tag-bg:#e8eaf4;
-    --row-hover:rgba(0,0,0,0.03); --row-sel:rgba(91,143,255,0.12); --row-sel-hover:rgba(91,143,255,0.05);
-    --chip-bg:rgba(91,143,255,0.12); --chip-filter-bg:rgba(91,143,255,0.05);
-    --mark-bg:rgba(200,140,0,0.18); --th-color:#0a0c14;
+    --bg:#eef1f6; --surface:#ffffff; --panel:#f5f6fa; --border:#d9dde9; --border2:#c2c8d8;
+    --txt:#1e2235; --txt-head:#0a0c14; --muted:#6f7690; --muted2:#a8b0c8; --tag-bg:#eceff7;
+    --row-hover:rgba(0,0,0,0.03); --row-sel:rgba(59,112,232,0.10); --row-sel-hover:rgba(59,112,232,0.05);
+    --chip-bg:rgba(59,112,232,0.12); --chip-filter-bg:rgba(59,112,232,0.05);
+    --mark-bg:rgba(200,140,0,0.18); --th-color:#0a0c14; --shadow:0 6px 22px rgba(30,40,70,0.13);
+    --donut-track:#e2e6f0;
   }
   :root {
-    --crit:#e03030; --med:#d4a800; --low:#1f9e5e; --accent:#3b70e8; --eol:#9b59c4; --radius:6px;
+    --crit:#e03030; --med:#d4a800; --low:#1f9e5e; --accent:#3b70e8; --eol:#9b59c4; --high:#d97400;
+    --radius:6px;
     --font-mono:'Consolas','Courier New','Lucida Console',monospace;
     --font-ui:'Segoe UI','Helvetica Neue',Arial,sans-serif;
   }
-  [data-theme="dark"] { --crit:#ff3d3d; --med:#f5c518; --low:#3dd68c; --accent:#5b8fff; --eol:#c084fc; }
+  [data-theme="dark"] { --crit:#ff3d3d; --med:#f5c518; --low:#3dd68c; --accent:#5b8fff; --eol:#c084fc; --high:#ff8c00; }
 
   html { font-size:16px; }
   body { background:var(--bg); color:var(--txt); font-family:var(--font-mono); min-height:100vh; overflow-x:hidden; }
 
-  /* HEADER */
-  header { display:flex; align-items:center; gap:16px; padding:18px 32px; border-bottom:1px solid var(--border); background:var(--surface); position:sticky; top:0; z-index:100; }
-  .logo-mark { width:34px; height:34px; background:var(--crit); border-radius:5px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .logo-mark svg { width:18px; height:18px; stroke:#fff; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-  .logo-text { font-family:var(--font-ui); font-weight:800; font-size:1.2rem; letter-spacing:-0.02em; color:var(--txt-head); }
-  .logo-text span { color:var(--crit); }
-  header .subtitle { font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.12em; }
-  .header-right { margin-left:auto; display:flex; align-items:center; gap:14px; }
-  .theme-toggle { background:none; border:1px solid var(--border2); border-radius:20px; padding:5px 12px; cursor:pointer; font-family:var(--font-mono); font-size:0.72rem; color:var(--muted); display:flex; align-items:center; gap:6px; white-space:nowrap; }
-  .theme-toggle:hover { color:var(--txt); border-color:var(--txt); }
-  .theme-toggle .icon-dark { display:inline; } .theme-toggle .icon-light { display:none; }
-  [data-theme="light"] .theme-toggle .icon-dark { display:none; }
-  [data-theme="light"] .theme-toggle .icon-light { display:inline; }
+  /* ── CLASSIFICATION ── */
+  .classification-banner { background:#c00000; color:#fff; font-family:var(--font-ui); font-weight:700; font-size:0.82rem; letter-spacing:0.14em; text-transform:uppercase; text-align:center; padding:6px 16px; display:none; position:sticky; top:0; z-index:300; }
+  .classification-banner.visible { display:block; }
 
-  /* UPLOAD */
-  #upload-screen { min-height:calc(100vh - 72px); display:flex; align-items:center; justify-content:center; padding:40px 24px; }
-  .upload-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:48px 44px; width:100%; max-width:720px; text-align:center; }
-  .upload-card h2 { font-family:var(--font-ui); font-weight:700; font-size:1.45rem; color:var(--txt-head); margin-bottom:10px; }
-  .upload-card p { color:var(--muted); font-size:0.85rem; line-height:1.7; margin-bottom:38px; }
-  .upload-slots { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:28px; }
+  /* ── HEADER ── */
+  header { display:flex; align-items:center; gap:20px; padding:14px 30px; border-bottom:1px solid var(--border); background:var(--surface); position:sticky; top:0; z-index:200; }
+  .classification-banner.visible ~ header { top:31px; }
+  .dash-title { font-family:var(--font-ui); font-weight:700; font-size:1.72rem; color:var(--txt-head); letter-spacing:-0.02em; line-height:1.4; padding-bottom:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dash-date  { font-size:0.74rem; color:var(--muted); margin-top:1px; font-family:var(--font-ui); line-height:1.3; }
+  .header-right { margin-left:auto; display:flex; align-items:center; gap:10px; flex-shrink:0; }
+
+  /* ── HEADER DROPDOWNS ── */
+  .hdrop { position:relative; }
+  .hdrop-btn { background:var(--panel); border:1px solid var(--border2); border-radius:var(--radius); color:var(--muted); font-family:var(--font-mono); font-size:0.72rem; padding:6px 11px; cursor:pointer; display:flex; align-items:center; gap:7px; white-space:nowrap; max-width:250px; }
+  .hdrop-btn:hover { color:var(--txt); border-color:var(--txt); }
+  .hdrop-btn.open  { color:var(--txt); border-color:var(--accent); }
+  .hdrop-btn .cap  { font-size:0.6rem; color:var(--muted2); text-transform:uppercase; letter-spacing:0.1em; }
+  .hdrop-btn .val  { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hdrop-btn .caret{ font-size:0.55rem; opacity:0.7; }
+  .hdrop-menu { display:none; position:absolute; right:0; top:calc(100% + 5px); background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); padding:8px; z-index:250; min-width:225px; max-height:420px; overflow-y:auto; box-shadow:var(--shadow); }
+  .hdrop-menu.open { display:block; }
+  .hdrop-title { font-size:0.58rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.11em; margin:2px 2px 7px; }
+  .hdrop-item { display:flex; align-items:center; gap:8px; width:100%; background:none; border:1px solid transparent; border-radius:4px; color:var(--txt); font-family:var(--font-mono); font-size:0.72rem; padding:5px 8px; cursor:pointer; text-align:left; }
+  .hdrop-item:hover { background:var(--panel); }
+  .hdrop-item.sel { color:var(--accent); border-color:var(--accent); background:var(--chip-filter-bg); }
+  .hdrop-item .tick { width:11px; flex-shrink:0; font-size:0.72rem; }
+  .hdrop-sep { border:none; border-top:1px solid var(--border); margin:8px 0; }
+  .hdrop-actions { display:flex; gap:6px; margin-top:7px; }
+  .hdrop-mini { flex:1; background:none; border:1px solid var(--border2); border-radius:4px; color:var(--muted); font-family:var(--font-mono); font-size:0.63rem; padding:4px; cursor:pointer; }
+  .hdrop-mini:hover { color:var(--txt); border-color:var(--txt); }
+  .view-switch { display:flex; background:var(--panel); border:1px solid var(--border2); border-radius:5px; padding:2px; gap:2px; }
+  .view-switch button { flex:1; background:none; border:none; border-radius:3px; color:var(--muted); font-family:var(--font-mono); font-size:0.66rem; padding:5px 4px; cursor:pointer; text-transform:uppercase; letter-spacing:0.06em; }
+  .view-switch button.active { background:var(--accent); color:#fff; font-weight:700; }
+
+  /* ── UPLOAD ── */
+  #upload-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:40px 24px; }
+  .upload-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:42px 40px; width:100%; max-width:780px; text-align:center; box-shadow:var(--shadow); }
+  .upload-card h2 { font-family:var(--font-ui); font-weight:700; font-size:1.4rem; color:var(--txt-head); margin-bottom:8px; }
+  .upload-card p { color:var(--muted); font-size:0.82rem; line-height:1.7; margin-bottom:28px; }
+  .setup-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:22px; text-align:left; }
+  @media (max-width:600px) { .setup-grid { grid-template-columns:1fr; } }
+  .setup-field label { display:block; font-family:var(--font-ui); font-size:0.72rem; font-weight:600; color:var(--txt-head); margin-bottom:5px; }
+  .setup-field input { width:100%; background:var(--panel); border:1px solid var(--border2); border-radius:var(--radius); color:var(--txt); font-family:var(--font-mono); font-size:0.8rem; padding:8px 11px; outline:none; }
+  .setup-field input:focus { border-color:var(--accent); }
+  .setup-field .sub { font-size:0.64rem; color:var(--muted); margin-top:4px; }
+  .upload-slots { display:grid; grid-template-columns:1fr 1fr 1fr; gap:13px; margin-bottom:22px; }
   @media (max-width:560px) { .upload-slots { grid-template-columns:1fr; } }
-  @media (min-width:561px) and (max-width:760px) { .upload-slots { grid-template-columns:1fr 1fr; } }
-  .upload-slot { border:2px dashed var(--border2); border-radius:var(--radius); padding:22px 14px; cursor:pointer; position:relative; background:var(--panel); }
+  @media (min-width:561px) and (max-width:780px) { .upload-slots { grid-template-columns:1fr 1fr; } }
+  .upload-slot { border:2px dashed var(--border2); border-radius:var(--radius); padding:20px 12px; cursor:pointer; position:relative; background:var(--panel); }
   .upload-slot:hover, .upload-slot.drag-over { border-color:var(--accent); background:var(--chip-filter-bg); }
   .upload-slot.loaded { border-color:var(--low); border-style:solid; }
   .upload-slot.optional { border-color:var(--muted2); }
   .upload-slot.optional:hover { border-color:var(--eol); }
   .upload-slot.optional.loaded { border-color:var(--eol); }
   .upload-slot input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
-  .slot-icon { font-size:1.5rem; margin-bottom:8px; }
-  .slot-label { font-family:var(--font-ui); font-weight:600; font-size:0.88rem; color:var(--txt-head); margin-bottom:4px; }
-  .slot-optional-badge { font-size:0.65rem; color:var(--eol); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; }
-  .slot-hint { font-size:0.72rem; color:var(--muted); }
-  .slot-status { font-size:0.72rem; color:var(--low); margin-top:6px; font-weight:600; display:none; }
+  .slot-icon { font-size:1.4rem; margin-bottom:7px; }
+  .slot-label { font-family:var(--font-ui); font-weight:600; font-size:0.85rem; color:var(--txt-head); margin-bottom:3px; }
+  .slot-optional-badge { font-size:0.62rem; color:var(--eol); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px; }
+  .slot-hint { font-size:0.7rem; color:var(--muted); }
+  .slot-status { font-size:0.7rem; color:var(--low); margin-top:5px; font-weight:600; display:none; }
   .upload-slot.optional .slot-status { color:var(--eol); }
   .upload-slot.loaded .slot-status { display:block; }
   .upload-slot.loaded .slot-hint { display:none; }
-  .date-input-row { display:flex; align-items:center; gap:12px; margin-bottom:22px; justify-content:center; flex-wrap:wrap; }
-  .date-label { font-family:var(--font-ui); font-size:0.82rem; font-weight:600; color:var(--txt-head); white-space:nowrap; }
-  .date-input { background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); color:var(--txt); font-family:var(--font-mono); font-size:0.82rem; padding:7px 12px; outline:none; cursor:pointer; }
-  .date-input:focus { border-color:var(--accent); }
-  .date-hint { font-size:0.7rem; color:var(--muted); }
-  .btn-load { background:var(--crit); color:#fff; border:none; padding:13px 34px; border-radius:var(--radius); font-family:var(--font-mono); font-weight:700; font-size:0.9rem; letter-spacing:0.05em; cursor:pointer; text-transform:uppercase; }
+
+  /* Links setup */
+  .links-setup { text-align:left; border:1px solid var(--border); border-radius:var(--radius); padding:14px 15px; margin-bottom:22px; background:var(--panel); }
+  .links-setup-head { display:flex; align-items:center; gap:9px; margin-bottom:10px; }
+  .links-setup-head h4 { font-family:var(--font-ui); font-size:0.78rem; font-weight:700; color:var(--txt-head); }
+  .links-setup-head span { font-size:0.64rem; color:var(--muted); }
+  .link-row { display:grid; grid-template-columns:1.1fr 1.4fr 1.5fr auto; gap:8px; margin-bottom:8px; align-items:center; }
+  @media (max-width:700px) { .link-row { grid-template-columns:1fr; } }
+  .link-row input { width:100%; background:var(--surface); border:1px solid var(--border2); border-radius:4px; color:var(--txt); font-family:var(--font-mono); font-size:0.73rem; padding:6px 9px; outline:none; }
+  .link-row input:focus { border-color:var(--accent); }
+  .link-del { background:none; border:1px solid var(--border2); border-radius:4px; color:var(--muted); cursor:pointer; padding:5px 9px; font-size:0.78rem; }
+  .link-del:hover { color:var(--crit); border-color:var(--crit); }
+  .link-add { background:none; border:1px dashed var(--border2); border-radius:4px; color:var(--muted); font-family:var(--font-mono); font-size:0.7rem; padding:6px 13px; cursor:pointer; }
+  .link-add:hover { color:var(--accent); border-color:var(--accent); }
+
+  .btn-load { background:var(--crit); color:#fff; border:none; padding:12px 32px; border-radius:var(--radius); font-family:var(--font-mono); font-weight:700; font-size:0.87rem; letter-spacing:0.05em; cursor:pointer; text-transform:uppercase; }
   .btn-load:hover { opacity:0.88; }
   .btn-load:disabled { opacity:0.35; cursor:not-allowed; }
-  .upload-error { color:var(--crit); font-size:0.8rem; margin-top:14px; display:none; }
+  .upload-error { color:var(--crit); font-size:0.78rem; margin-top:13px; display:none; }
 
-  /* DASHBOARD */
-  #dashboard-screen { display:none; padding:0 0 64px; }
+  /* ── SHELL ── */
+  #dashboard-screen { display:none; }
+  .view { display:none; padding:26px 30px 60px; }
+  .view.active { display:block; }
 
-  /* ACTION BAR */
-  .action-bar { background:var(--surface); border-bottom:1px solid var(--border); padding:10px 32px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  .action-bar-date { font-size:0.82rem; font-weight:600; color:var(--txt); font-family:var(--font-ui); }
-  .action-bar-left { display:flex; flex-direction:column; gap:3px; margin-right:auto; }
-  .export-scope-note { font-size:0.67rem; color:var(--med); display:none; }
-  .export-scope-note.visible { display:block; }
-  .btn-action { background:none; border:1px solid var(--border2); color:var(--muted); font-family:var(--font-mono); font-size:0.73rem; padding:7px 14px; border-radius:var(--radius); cursor:pointer; text-transform:uppercase; letter-spacing:0.07em; display:flex; align-items:center; gap:6px; white-space:nowrap; }
-  .btn-action:hover { color:var(--txt); border-color:var(--txt); }
-  .btn-export { border-color:var(--accent); color:var(--accent); }
-  .btn-export:hover { background:var(--chip-filter-bg); color:var(--txt-head); }
-
-  /* TABS */
-  .tabs-bar { background:var(--surface); border-bottom:1px solid var(--border); padding:0 32px; display:flex; overflow-x:auto; scrollbar-width:none; }
-  .tabs-bar.hidden { display:none; }
-  .tabs-bar::-webkit-scrollbar { display:none; }
-  .tab-btn { padding:14px 20px; font-family:var(--font-mono); font-size:0.78rem; font-weight:600; color:var(--muted); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:-1px; }
-  .tab-btn:hover { color:var(--txt); }
-  .tab-btn.active { color:var(--txt-head); border-bottom-color:var(--crit); }
-
-  /* PANELS */
-  .tab-panel { display:none; padding:30px; }
-  .tab-panel.active { display:block; }
-
-  /* STAT CARDS */
-  .stats-grid { display:grid; gap:16px; margin-bottom:30px; }
+  /* ── STAT CARDS (asset view) ── */
+  .stats-grid { display:grid; gap:15px; margin-bottom:26px; }
   .stats-grid.cols-3 { grid-template-columns:repeat(3,1fr); }
   .stats-grid.cols-4 { grid-template-columns:repeat(4,1fr); }
   @media (max-width:900px) { .stats-grid.cols-3,.stats-grid.cols-4 { grid-template-columns:repeat(2,1fr); } }
-  @media (max-width:500px) { .stats-grid.cols-3,.stats-grid.cols-4 { grid-template-columns:1fr; } }
-  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:24px 24px 18px; position:relative; overflow:hidden; }
+  @media (max-width:520px) { .stats-grid.cols-3,.stats-grid.cols-4 { grid-template-columns:1fr; } }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:22px 22px 17px; position:relative; overflow:hidden; }
   .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
   .stat-card.c-assets::before { background:var(--accent); }
   .stat-card.c-eol::before    { background:var(--eol); }
   .stat-card.c-crit::before   { background:var(--crit); }
   .stat-card.c-avg::before    { background:var(--med); }
-  .stat-label { font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.14em; margin-bottom:10px; }
-  .stat-value { font-family:var(--font-ui); font-weight:800; font-size:4.2rem; color:var(--txt-head); line-height:1; letter-spacing:-0.03em; }
+  .stat-label { font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.13em; margin-bottom:9px; }
+  .stat-value { font-family:var(--font-ui); font-weight:800; font-size:3.9rem; color:var(--txt-head); line-height:1; letter-spacing:-0.03em; }
   .stat-card.c-eol  .stat-value { color:var(--eol); }
   .stat-card.c-crit .stat-value { color:var(--crit); }
   .stat-card.c-avg  .stat-value { color:var(--med); }
-  .stat-sub { font-size:0.72rem; color:var(--muted); margin-top:6px; }
-  .stat-pct { font-family:var(--font-ui); font-weight:700; font-size:1.5rem; color:var(--eol); opacity:0.75; margin-left:10px; letter-spacing:-0.02em; vertical-align:baseline; }
-  .stat-value-row { display:flex; align-items:baseline; flex-wrap:wrap; gap:0; }
-  .stat-filter-badge { display:none; font-size:0.6rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px; }
+  .stat-sub { font-size:0.7rem; color:var(--muted); margin-top:6px; }
+  .stat-pct { font-family:var(--font-ui); font-weight:700; font-size:1.45rem; color:var(--eol); opacity:0.78; margin-left:10px; }
+  .stat-value-row { display:flex; align-items:baseline; flex-wrap:wrap; }
+  .stat-filter-badge { display:none; font-size:0.58rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:5px; }
   .stat-filter-badge.visible { display:block; }
   .stat-card-inner { display:flex; align-items:flex-start; gap:14px; }
   .stat-card-main  { flex:1; min-width:0; }
-  .stat-owner-breakdown { flex-shrink:0; min-width:110px; max-width:145px; padding-left:14px; border-left:1px solid var(--border); display:flex; flex-direction:column; gap:4px; align-self:center; }
-  .owner-stat-row { display:flex; justify-content:space-between; align-items:baseline; font-size:0.75rem; gap:6px; }
-  .owner-stat-name { color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
+  .stat-owner-breakdown { flex-shrink:0; min-width:104px; max-width:150px; padding-left:13px; border-left:1px solid var(--border); display:flex; flex-direction:column; gap:4px; align-self:center; }
+  .stat-owner-breakdown:empty { display:none; }
+  .owner-stat-row { display:flex; justify-content:space-between; align-items:baseline; font-size:0.72rem; gap:6px; }
   .owner-stat-btn { background:none; border:none; padding:0; font-family:inherit; font-size:inherit; color:var(--muted); cursor:pointer; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
   .owner-stat-btn:hover { color:var(--accent); text-decoration:underline; }
   .owner-stat-val { font-weight:700; white-space:nowrap; flex-shrink:0; }
@@ -139,113 +157,211 @@
   .c-crit   .owner-stat-val { color:var(--crit); }
   .c-avg    .owner-stat-val { color:var(--med); }
 
-  /* TABLES */
-  .tables-grid { display:grid; grid-template-columns:5fr 8fr; gap:20px; }
-  @media (max-width:960px) { .tables-grid { grid-template-columns:1fr; } }
+  /* ── TABLE PANELS ── */
+  .tables-grid { display:grid; grid-template-columns:5fr 8fr; gap:18px; }
+  @media (max-width:1000px) { .tables-grid { grid-template-columns:1fr; } }
   .table-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; display:flex; flex-direction:column; }
-  .table-panel-header { padding:13px 16px 11px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; gap:10px; flex-shrink:0; }
-  .table-panel-header h3 { font-family:var(--font-ui); font-weight:700; font-size:0.88rem; color:var(--txt-head); text-transform:uppercase; letter-spacing:0.06em; }
-  .table-panel-header span { font-size:0.7rem; color:var(--muted); margin-left:auto; }
-  .search-row { padding:8px 11px; border-bottom:1px solid var(--border); background:var(--panel); flex-shrink:0; position:relative; }
-  .search-input { width:100%; background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); color:var(--txt); font-family:var(--font-mono); font-size:0.78rem; padding:6px 28px 6px 10px; outline:none; }
-  .search-input::placeholder { color:var(--muted2); }
-  .search-input:focus { border-color:var(--accent); }
-  .search-clear { position:absolute; right:19px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; font-size:0.9rem; line-height:1; padding:2px 3px; display:none; }
-  .search-clear.visible { display:block; }
-  .search-clear:hover { color:var(--txt); }
-  .filter-chip-row { padding:6px 11px; background:var(--chip-filter-bg); border-bottom:1px solid var(--border); display:none; align-items:center; gap:6px; flex-shrink:0; flex-wrap:wrap; min-height:34px; }
-  .filter-chip-row.visible { display:flex; }
-  /* VULN COLUMN TOGGLES - cog dropdown */
+  .table-panel-header { padding:9px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-shrink:0; }
+  .table-panel-header h3 { font-family:var(--font-ui); font-weight:700; font-size:0.85rem; color:var(--txt-head); text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap; flex-shrink:0; }
+  .hdr-search { position:relative; margin-left:auto; flex:1; max-width:230px; min-width:90px; }
+  .hdr-search input { width:100%; background:var(--panel); border:1px solid var(--border2); border-radius:var(--radius); color:var(--txt); font-family:var(--font-mono); font-size:0.72rem; padding:5px 24px 5px 9px; outline:none; }
+  .hdr-search input::placeholder { color:var(--muted2); }
+  .hdr-search input:focus { border-color:var(--accent); }
+  .hdr-search .clr { position:absolute; right:5px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; font-size:0.8rem; line-height:1; padding:1px 3px; display:none; }
+  .hdr-search .clr.visible { display:block; }
+  .hdr-search .clr:hover { color:var(--txt); }
+
+  .info-icon { width:15px; height:15px; border-radius:50%; border:1px solid var(--muted); color:var(--muted); font-size:0.62rem; font-family:var(--font-ui); font-weight:700; display:inline-flex; align-items:center; justify-content:center; cursor:help; position:relative; flex-shrink:0; }
+  .info-icon:hover { color:var(--accent); border-color:var(--accent); }
+  .info-icon .tip { display:none; position:absolute; left:0; top:calc(100% + 8px); background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); padding:10px 12px; width:290px; font-family:var(--font-mono); font-size:0.7rem; font-weight:400; color:var(--txt); line-height:1.55; text-align:left; box-shadow:var(--shadow); z-index:120; text-transform:none; letter-spacing:0; }
+  .info-icon:hover .tip { display:block; }
+
   .col-cog-wrap { position:relative; flex-shrink:0; }
-  .col-cog-btn  { background:none; border:1px solid transparent; border-radius:4px; color:var(--muted); cursor:pointer; padding:2px 5px; font-size:0.85rem; line-height:1; display:flex; align-items:center; }
+  .col-cog-btn  { background:none; border:1px solid transparent; border-radius:4px; color:var(--muted); cursor:pointer; padding:3px 5px; font-size:0.85rem; line-height:1; display:flex; align-items:center; }
   .col-cog-btn:hover { color:var(--txt); border-color:var(--border2); }
   .col-cog-btn.open  { color:var(--txt); border-color:var(--border2); background:var(--panel); }
-  .col-cog-dropdown  { display:none; position:absolute; right:0; top:calc(100% + 4px); background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); padding:8px 10px; z-index:200; min-width:140px; box-shadow:0 4px 16px rgba(0,0,0,0.35); }
+  .col-cog-dropdown  { display:none; position:absolute; right:0; top:calc(100% + 5px); background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); padding:9px 10px; z-index:150; min-width:165px; box-shadow:var(--shadow); }
   .col-cog-dropdown.open { display:block; }
-  .col-cog-title { font-size:0.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:7px; }
-  .col-cog-sep { border:none; border-top:1px solid var(--border); margin:6px 0; }
-  .col-csv-btn { background:none; border:1px solid var(--border2); border-radius:4px; color:var(--muted); font-family:var(--font-mono); font-size:0.68rem; padding:4px 10px; cursor:pointer; white-space:nowrap; text-align:left; width:100%; margin-top:2px; }
-  .col-csv-btn:hover { color:var(--txt); border-color:var(--txt); }
+  .col-cog-title { font-size:0.58rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px; }
+  .col-cog-sep { border:none; border-top:1px solid var(--border); margin:7px 0; }
   .col-toggle-list { display:flex; flex-direction:column; gap:4px; }
   .col-toggle-btn { background:var(--tag-bg); border:1px solid var(--border2); border-radius:4px; color:var(--muted); font-family:var(--font-mono); font-size:0.68rem; padding:4px 10px; cursor:pointer; white-space:nowrap; text-align:left; width:100%; }
-  .col-toggle-btn.active { border-color:currentColor; }
-  .col-toggle-btn.t-crit.active  { background:rgba(255,61,61,0.12);  color:var(--crit); }
-  .col-toggle-btn.t-high.active  { background:rgba(255,140,0,0.12);  color:#ff8c00; }
-  .col-toggle-btn.t-med.active   { background:rgba(245,197,24,0.12); color:var(--med); }
-  .col-toggle-btn.t-low.active   { background:rgba(61,214,140,0.12); color:var(--low); }
-  /* column colours in table */
-  .high-val { color:#ff8c00; font-weight:600; }
-  .med-val  { color:var(--med); font-weight:600; }
-  .low-val  { color:var(--low); }
-  [data-theme="light"] .high-val { color:#b35f00; }
-  .filter-chip-label { font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; flex-shrink:0; }
-  .filter-chip { display:inline-flex; align-items:center; gap:5px; background:var(--chip-bg); border:1px solid var(--accent); border-radius:20px; padding:2px 8px 2px 10px; font-size:0.68rem; color:var(--accent); max-width:180px; }
-  .filter-chip-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .filter-chip-x { background:none; border:none; color:var(--accent); cursor:pointer; font-size:0.85rem; line-height:1; padding:0 1px; opacity:0.7; flex-shrink:0; }
-  .filter-chip-x:hover { opacity:1; }
-  .filter-clear-all { font-size:0.66rem; color:var(--muted); cursor:pointer; margin-left:auto; text-decoration:underline; white-space:nowrap; background:none; border:none; font-family:var(--font-mono); }
-  .filter-clear-all:hover { color:var(--txt); }
+  .col-toggle-btn.active { border-color:currentColor; color:var(--txt); }
+  .col-toggle-btn.t-crit.active { background:rgba(224,48,48,0.13); color:var(--crit); }
+  .col-toggle-btn.t-high.active { background:rgba(217,116,0,0.13); color:var(--high); }
+  .col-toggle-btn.t-med.active  { background:rgba(212,168,0,0.13); color:var(--med); }
+  .col-toggle-btn.t-low.active  { background:rgba(31,158,94,0.13); color:var(--low); }
+  .col-toggle-btn.t-eol.active  { background:rgba(155,89,196,0.13); color:var(--eol); }
+  .cog-num-row { display:flex; align-items:center; gap:7px; }
+  .cog-num { width:100%; background:var(--panel); border:1px solid var(--border2); border-radius:4px;
+      color:var(--txt); font-family:var(--font-mono); font-size:0.7rem; padding:4px 7px; outline:none; }
+  .cog-num:focus { border-color:var(--accent); }
+  .col-csv-btn { background:none; border:1px solid var(--border2); border-radius:4px; color:var(--muted); font-family:var(--font-mono); font-size:0.68rem; padding:4px 10px; cursor:pointer; white-space:nowrap; text-align:left; width:100%; }
+  .col-csv-btn:hover { color:var(--txt); border-color:var(--txt); }
+
+  /* ── TABLES ── */
   .data-table { width:100%; border-collapse:collapse; font-size:0.72rem; }
   .data-table thead th { padding:8px 11px; text-align:left; font-size:0.60rem; text-transform:uppercase; letter-spacing:0.09em; color:var(--muted); background:var(--panel); border-bottom:1px solid var(--border); white-space:nowrap; user-select:none; }
   .data-table thead th.sortable { cursor:pointer; }
   .data-table thead th.sortable:hover { color:var(--txt); }
   .data-table thead th.sort-active { color:var(--th-color); }
-  .data-table thead th:not(:first-child) { text-align:right; }
-  .data-table thead th.left { text-align:left !important; }
-  .data-table thead th.sortable .th-inner { display:inline-flex; align-items:center; gap:4px; float:right; }
-  .data-table thead th.sortable.left .th-inner { float:none; }
+  .data-table thead th:not(.left) { text-align:right; }
+  .data-table thead th.sortable .th-inner { display:inline-flex; align-items:center; gap:4px; }
+  .data-table thead th:not(.left) .th-inner { float:right; }
   .sort-arrow { font-size:0.65rem; opacity:0.4; line-height:1; }
   .sort-active .sort-arrow { opacity:1; color:var(--med); }
   .data-table tbody tr { border-bottom:1px solid var(--border); }
   .data-table tbody tr:last-child { border-bottom:none; }
   .data-table tbody tr:hover { background:var(--row-hover); }
-  .data-table tbody td { padding:8px 11px; color:var(--txt); vertical-align:middle; }
-  .data-table tbody td:not(:first-child) { text-align:right; }
-  .data-table tbody td.left { text-align:left !important; }
-  /* Virtual scroll spacer rows — must be invisible and zero-impact */
+  .data-table tbody td { padding:8px 11px; color:var(--txt); vertical-align:middle; text-align:right; }
+  .data-table tbody td.left { text-align:left; }
   .vs-spacer td { padding:0 !important; border:none !important; background:none !important; }
-  .name-cell  { font-weight:500; color:var(--txt-head); max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left !important; }
+  .rank-cell { color:var(--muted2); font-size:0.66rem; width:30px; }
+  .name-cell  { font-weight:500; color:var(--txt-head); max-width:170px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .ip-cell    { color:var(--muted); font-size:0.68rem; white-space:nowrap; }
-  .owner-cell { color:var(--muted); font-size:0.68rem; max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left !important; }
+  .owner-cell { color:var(--muted); font-size:0.68rem; max-width:95px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .repo-tag   { display:inline-block; background:var(--tag-bg); color:var(--muted); font-size:0.59rem; padding:2px 6px; border-radius:3px; border:1px solid var(--border); }
   .crit-val   { color:var(--crit); font-weight:700; }
   .avg-val    { color:var(--med); font-weight:600; }
   .assets-val { color:var(--accent); }
+  .high-val   { color:var(--high); font-weight:600; }
+  .med-val    { color:var(--med); font-weight:600; }
+  .low-val    { color:var(--low); }
   .eol-val    { color:var(--eol); font-weight:700; }
-  .eol-badge  { display:inline-block; background:rgba(192,132,252,0.15); color:var(--eol); border:1px solid rgba(192,132,252,0.4); border-radius:3px; font-size:0.60rem; padding:1px 6px; white-space:nowrap; }
-  .eol-plugin-cell { color:var(--muted); font-size:0.65rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left !important; }
+  .eolpct-val { color:var(--eol); font-weight:600; }
+  .eol-badge  { display:inline-block; background:rgba(155,89,196,0.15); color:var(--eol); border:1px solid rgba(155,89,196,0.42); border-radius:3px; font-size:0.60rem; padding:1px 6px; white-space:nowrap; }
+  .eol-plugin-cell { color:var(--muted); font-size:0.65rem; max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .bar-wrap  { display:flex; align-items:center; gap:7px; justify-content:flex-end; }
   .mini-bar  { height:3px; border-radius:2px; background:var(--crit); min-width:2px; flex-shrink:0; }
+  .mini-bar.eolbar { background:var(--eol); }
   .table-scroll { max-height:400px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--border2) transparent; flex:1; }
-  .table-scroll::-webkit-scrollbar { width:4px; }
-  .table-scroll::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
-  .empty-state { padding:40px; text-align:center; color:var(--muted); font-size:0.82rem; }
+  .table-scroll::-webkit-scrollbar { width:5px; }
+  .table-scroll::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+  .empty-state { padding:38px; text-align:center; color:var(--muted); font-size:0.8rem; }
   .repo-row { cursor:pointer; }
   .repo-row:hover td { background:var(--row-sel-hover); }
   .repo-row.row-active td { background:var(--row-sel) !important; }
   .repo-row.row-active .name-cell { color:var(--accent); }
   mark { background:var(--mark-bg); color:var(--med); border-radius:2px; padding:0 1px; }
-  .toast { position:fixed; bottom:24px; right:24px; background:var(--low); color:#fff; font-size:0.78rem; font-weight:700; padding:10px 18px; border-radius:var(--radius); opacity:0; transform:translateY(8px); pointer-events:none; z-index:999; }
-  [data-theme="dark"] .toast { color:#0b1a12; }
-  .toast.show { opacity:1; transform:none; }
+
+  /* ── CHIPS ── */
+  .filter-chip-row { padding:6px 11px; background:var(--chip-filter-bg); border-bottom:1px solid var(--border); display:none; align-items:center; gap:6px; flex-shrink:0; flex-wrap:wrap; }
+  .filter-chip-row.visible { display:flex; }
+  .filter-chip-label { font-size:0.64rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; flex-shrink:0; }
+  .filter-chip { display:inline-flex; align-items:center; gap:5px; background:var(--chip-bg); border:1px solid var(--accent); border-radius:20px; padding:2px 8px 2px 10px; font-size:0.66rem; color:var(--accent); max-width:180px; }
+  .filter-chip-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .filter-chip-x { background:none; border:none; color:var(--accent); cursor:pointer; font-size:0.82rem; line-height:1; padding:0 1px; opacity:0.7; }
+  .filter-chip-x:hover { opacity:1; }
+  .filter-clear-all { font-size:0.64rem; color:var(--muted); cursor:pointer; margin-left:auto; text-decoration:underline; background:none; border:none; font-family:var(--font-mono); }
+  .filter-clear-all:hover { color:var(--txt); }
+
+  /* ── LINKS PANEL (asset view) ── */
+  .links-panel { margin-top:18px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; display:none; }
+  .links-panel.visible { display:block; }
+  .links-panel-header { padding:10px 14px; border-bottom:1px solid var(--border); }
+  .links-panel-header h3 { font-family:var(--font-ui); font-weight:700; font-size:0.85rem; color:var(--txt-head); text-transform:uppercase; letter-spacing:0.05em; }
+  .links-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(255px,1fr)); gap:12px; padding:14px; }
+  .link-card { display:block; background:var(--panel); border:1px solid var(--border2); border-radius:var(--radius); padding:12px 14px; text-decoration:none; }
+  .link-card:hover { border-color:var(--accent); background:var(--chip-filter-bg); }
+  .link-card .lt { font-family:var(--font-ui); font-weight:600; font-size:0.82rem; color:var(--accent); margin-bottom:4px; display:flex; align-items:center; gap:6px; }
+  .link-card .lt .arr { font-size:0.7rem; opacity:0.7; }
+  .link-card .ld { font-size:0.7rem; color:var(--muted); line-height:1.5; }
+
+  /* ══════════ REPORT VIEW ══════════ */
+  /* Report view is a fixed-height, non-scrolling board */
+  #view-report.active { display:flex; flex-direction:column; padding:18px 26px 20px;
+      height:calc(100vh - 88px); overflow:hidden; }
+  .classification-banner.visible ~ #dashboard-screen #view-report.active { height:calc(100vh - 119px); }
+  .report-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; flex:1; min-height:0; }
+  .report-stats { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr;
+      gap:16px; min-height:0; height:100%; }
+  @media (max-width:1150px) { .report-grid { grid-template-columns:1fr; }
+      #view-report.active { height:auto; overflow:visible; }
+      .report-stats { grid-template-rows:auto auto; } }
+  .rep-card { background:var(--surface); border:1px solid var(--border); border-radius:9px;
+      padding:clamp(14px,2.2vh,24px) clamp(16px,1.6vw,24px); position:relative; overflow:hidden;
+      min-height:0; display:flex; flex-direction:column; justify-content:center; }
+  @media (max-width:1150px) { .rep-card { min-height:170px; } }
+  .rep-card::before { content:''; position:absolute; top:0; left:0; right:0; height:4px; }
+  .rep-card.c-assets::before { background:var(--accent); }
+  .rep-card.c-eol::before    { background:var(--eol); }
+  .rep-card.c-crit::before   { background:var(--crit); }
+  .rep-card.c-avg::before    { background:var(--med); }
+  .rep-label { font-family:var(--font-ui); font-size:clamp(0.72rem,min(1.7vh,1.05vw),1.05rem); color:var(--muted);
+      text-transform:uppercase; letter-spacing:0.11em; margin-bottom:clamp(6px,1.3vh,14px); font-weight:600; }
+  /* min() keeps the figure inside the card on narrow screens as well as short ones */
+  .rep-value { font-family:var(--font-ui); font-weight:800; font-size:clamp(2.4rem,min(10vh,6.2vw),7.5rem);
+      color:var(--txt-head); line-height:0.95; letter-spacing:-0.035em;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rep-card.c-crit .rep-value { color:var(--crit); }
+  .rep-card.c-avg  .rep-value { color:var(--med); }
+  .rep-sub { font-size:clamp(0.7rem,min(1.6vh,1vw),1rem); color:var(--muted);
+      margin-top:clamp(5px,1.1vh,12px); line-height:1.35; }
+  /* EOL card: donut dominates, count is secondary */
+  .rep-card.c-eol { align-items:center; }
+  .rep-card.c-eol .rep-label { align-self:flex-start; }
+  .rep-eol-inner { flex:1; min-height:0; width:100%; display:flex; align-items:center;
+      justify-content:center; }
+  .donut-wrap { position:relative; height:100%; aspect-ratio:1/1; flex-shrink:1; min-height:0;
+      max-width:100%; display:flex; align-items:center; justify-content:center; }
+  @supports not (aspect-ratio:1/1) { .donut-wrap { width:clamp(120px,17vh,240px); height:clamp(120px,17vh,240px); } }
+  .donut-wrap svg { transform:rotate(-90deg); display:block; width:100%; height:100%; }
+  .donut-label { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+      justify-content:center; font-family:var(--font-ui); font-weight:800;
+      font-size:clamp(1.8rem,min(6.4vh,4vw),4.6rem); color:var(--eol); letter-spacing:-0.035em; line-height:1; }
+  .donut-label .dl-sub { font-size:clamp(0.58rem,min(1.35vh,0.85vw),0.85rem); font-weight:600; color:var(--muted);
+      text-transform:uppercase; letter-spacing:0.1em; margin-top:5px; }
+  .rep-eol-txt { display:none; }
+
+  .report-panel { background:var(--surface); border:1px solid var(--border); border-radius:9px;
+      overflow:hidden; display:flex; flex-direction:column; min-height:0; height:100%; }
+  @media (max-width:1150px) { .report-panel { height:auto; max-height:70vh; } }
+  .report-mode-switch { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:14px 14px 0; }
+  @media (max-width:520px) { .report-mode-switch { grid-template-columns:1fr; } }
+  .rmode-btn { background:var(--panel); border:2px solid var(--border2); border-radius:8px; padding:14px 14px; cursor:pointer; text-align:left; font-family:var(--font-ui); color:var(--muted); }
+  .rmode-btn:hover { border-color:var(--muted); color:var(--txt); }
+  .rmode-btn.active { border-color:var(--accent); background:var(--chip-filter-bg); color:var(--txt-head); }
+  .rmode-btn .rm-t { font-weight:700; font-size:0.95rem; margin-bottom:3px; display:block; }
+  .rmode-btn .rm-s { font-size:0.72rem; opacity:0.8; display:block; line-height:1.4; }
+  .rmode-btn.active .rm-t { color:var(--accent); }
+
+  .report-panel-header { padding:14px 16px 12px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); }
+  .report-panel-header h3 { font-family:var(--font-ui); font-weight:700; font-size:1rem; color:var(--txt-head); letter-spacing:0.01em; }
+  .report-panel .table-scroll { max-height:none; flex:1; min-height:0; overflow-y:auto; }
+  /* Large, readable report table */
+  .report-table { font-size:1rem; }
+  .report-table thead th { padding:13px 16px; font-size:0.72rem; letter-spacing:0.1em; }
+  .report-table tbody td { padding:14px 16px; font-size:1rem; }
+  .report-table .rank-cell { font-size:0.9rem; width:46px; color:var(--muted); font-weight:600; }
+  .report-table .name-cell { font-size:1.02rem; font-weight:600; max-width:none; }
+  .report-table .crit-val, .report-table .avg-val, .report-table .assets-val,
+  .report-table .eol-val, .report-table .eolpct-val { font-size:1.06rem; font-weight:400; }
+  .report-table .mini-bar { height:5px; border-radius:3px; }
 </style>
 </head>
 <body>
-<header>
-  <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
-  <div class="logo-text">Vuln<span>Stat</span></div>
-  <div class="header-right">
-    <span class="subtitle">Vulnerability Reporting Dashboard</span>
-    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">
-      <span class="icon-dark">&#9790; Light</span><span class="icon-light">&#9788; Dark</span>
-    </button>
-  </div>
-</header>
 
+<div class="classification-banner" id="classification-banner"></div>
+
+<!-- ══════ UPLOAD ══════ -->
 <div id="upload-screen">
   <div class="upload-card">
-    <h2>Load Your CSV Files</h2>
-    <p>Upload your Assets CSV to generate the dashboard. Repositories and EOL CSVs are optional.</p>
+    <h2>Set Up Your Dashboard</h2>
+    <p>Assets CSV is required. Repositories and EOL CSVs are optional.<br>All files are processed in your browser &mdash; nothing is uploaded.</p>
+
+    <div class="setup-grid">
+      <div class="setup-field">
+        <label for="setup-title">Dashboard Title</label>
+        <input type="text" id="setup-title" placeholder="e.g. Enterprise Vulnerability Report" autocomplete="off">
+        <div class="sub">Appears in the top-left of the dashboard</div>
+      </div>
+      <div class="setup-field">
+        <label for="setup-class">Security Classification</label>
+        <input type="text" id="setup-class" placeholder="e.g. OFFICIAL: SENSITIVE" autocomplete="off">
+        <div class="sub">Optional &mdash; shown in a red banner at the top</div>
+      </div>
+    </div>
+
     <div class="upload-slots">
       <div class="upload-slot" id="slot-assets" ondragover="dragOver(event,'slot-assets')" ondragleave="dragLeave(event,'slot-assets')" ondrop="dropFile(event,'assets')">
         <input type="file" accept=".csv" onchange="loadFile(this,'assets')">
@@ -254,8 +370,7 @@
       </div>
       <div class="upload-slot optional" id="slot-repos" ondragover="dragOver(event,'slot-repos')" ondragleave="dragLeave(event,'slot-repos')" ondrop="dropFile(event,'repos')">
         <input type="file" accept=".csv" onchange="loadFile(this,'repos')">
-        <div class="slot-icon">&#128203;</div>
-        <div class="slot-optional-badge">Optional</div>
+        <div class="slot-icon">&#128203;</div><div class="slot-optional-badge">Optional</div>
         <div class="slot-label">Repositories.csv</div>
         <div class="slot-hint">Click or drag &amp; drop</div><div class="slot-status" id="status-repos">&#10003; Loaded</div>
       </div>
@@ -266,1011 +381,1079 @@
         <div class="slot-status" id="status-eol">&#10003; Loaded</div>
       </div>
     </div>
-    <div class="date-input-row">
-      <label class="date-label" for="report-date">Report Date</label>
-      <input type="date" id="report-date" class="date-input">
-      <span class="date-hint">Optional &mdash; shown on the dashboard and in exported snapshots</span>
+
+    <div class="links-setup">
+      <div class="links-setup-head">
+        <h4>Links</h4><span>Optional &mdash; handy links shown under the tables in Asset View</span>
+      </div>
+      <div id="links-rows"></div>
+      <button class="link-add" onclick="addLinkRow()">+ Add link</button>
     </div>
+
+    <div class="setup-grid" style="grid-template-columns:1fr; max-width:280px; margin:0 auto 22px;">
+      <div class="setup-field">
+        <label for="report-date">Report Date</label>
+        <input type="date" id="report-date">
+        <div class="sub">Optional &mdash; shown under the title</div>
+      </div>
+    </div>
+
     <button class="btn-load" id="btn-load" disabled onclick="buildDashboard()">Generate Dashboard</button>
     <div class="upload-error" id="upload-error"></div>
   </div>
 </div>
 
+<!-- ══════ DASHBOARD ══════ -->
 <div id="dashboard-screen">
-  <div class="action-bar">
-    <div class="action-bar-left">
-      <span class="action-bar-date" id="action-bar-date"></span>
-      <span class="export-scope-note" id="export-scope-note"></span>
+  <header>
+    <div>
+      <div class="dash-title" id="dash-title">Vulnerability Dashboard</div>
+      <div class="dash-date" id="dash-date"></div>
     </div>
-    <button class="btn-action btn-export" onclick="exportDashboard()">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Export Snapshot
-    </button>
-    <button class="btn-action" onclick="resetDashboard()">&#8617; Load New Files</button>
+    <div class="header-right">
+      <div class="hdrop" id="hd-scope-wrap">
+        <button class="hdrop-btn" id="hd-scope-btn">
+          <span class="cap">Division</span><span class="val" id="hd-scope-val">All</span><span class="caret">&#9662;</span>
+        </button>
+        <div class="hdrop-menu" id="hd-scope-menu"></div>
+      </div>
+      <div class="hdrop">
+        <button class="hdrop-btn" id="hd-cog-btn" title="Settings">&#9881;</button>
+        <div class="hdrop-menu" id="hd-cog-menu" style="min-width:235px">
+          <div class="hdrop-title">View</div>
+          <div class="view-switch">
+            <button id="vsw-asset" class="active" onclick="setView('asset')">Asset View</button>
+            <button id="vsw-report" onclick="setView('report')">Report View</button>
+          </div>
+          <hr class="hdrop-sep">
+          <div class="hdrop-title">Actions</div>
+          <button class="hdrop-item" onclick="exportDashboard()"><span class="tick">&#8595;</span>Export Snapshot</button>
+          <button class="hdrop-item" onclick="toggleTheme()"><span class="tick" id="theme-icon">&#9790;</span><span id="theme-label">Light Mode</span></button>
+          <button class="hdrop-item" onclick="resetDashboard()"><span class="tick">&#8617;</span>Load New Files</button>
+          <div class="hdrop-title" id="export-scope-note" style="color:var(--med); margin-top:8px; display:none; text-transform:none; letter-spacing:0; line-height:1.5;"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── ASSET VIEW ── -->
+  <div class="view active" id="view-asset">
+    <div class="stats-grid cols-4" id="asset-stats"></div>
+    <div class="tables-grid">
+      <div class="table-panel">
+        <div class="table-panel-header">
+          <h3>Repositories</h3>
+          <div class="hdr-search">
+            <input id="repo-search" placeholder="Search" autocomplete="off">
+            <button class="clr" id="repo-search-clr" title="Clear">&#10005;</button>
+          </div>
+          <div class="col-cog-wrap">
+            <button class="col-cog-btn" id="rcog-btn" title="Table options">&#9881;</button>
+            <div class="col-cog-dropdown" id="rcog-menu">
+              <div class="col-cog-title">Columns</div>
+              <div class="col-toggle-list" id="rcog-cols"></div>
+              <hr class="col-cog-sep">
+              <div class="col-cog-title">Min assets per repo</div>
+              <div class="cog-num-row"><input type="number" min="0" step="1" value="0" class="cog-num" id="rcog-min"></div>
+              <hr class="col-cog-sep">
+              <div class="col-cog-title">Export</div>
+              <button class="col-csv-btn" onclick="exportRepoCSV()">&#8595; Export to CSV</button>
+            </div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table" id="repo-table"><thead><tr id="repo-thead"></tr></thead><tbody id="repo-tbody"></tbody></table>
+        </div>
+      </div>
+      <div class="table-panel">
+        <div class="table-panel-header">
+          <h3>Assets</h3>
+          <div class="hdr-search">
+            <input id="asset-search" placeholder="Search" autocomplete="off">
+            <button class="clr" id="asset-search-clr" title="Clear">&#10005;</button>
+          </div>
+          <div class="col-cog-wrap">
+            <button class="col-cog-btn" id="acog-btn" title="Table options">&#9881;</button>
+            <div class="col-cog-dropdown" id="acog-menu">
+              <div class="col-cog-title">Columns</div>
+              <div class="col-toggle-list" id="acog-cols"></div>
+              <hr class="col-cog-sep">
+              <div class="col-cog-title">Export</div>
+              <button class="col-csv-btn" onclick="exportAssetCSV()">&#8595; Export to CSV</button>
+            </div>
+          </div>
+        </div>
+        <div class="filter-chip-row" id="filter-chip-row">
+          <span class="filter-chip-label">Repo:</span>
+          <span id="filter-chips" style="display:inline-flex;gap:5px;flex-wrap:wrap;"></span>
+          <button class="filter-clear-all" onclick="clearAllRepoFilters()">Clear all</button>
+        </div>
+        <div class="table-scroll" id="asset-scroll">
+          <table class="data-table" id="asset-table"><thead><tr id="asset-thead"></tr></thead><tbody id="asset-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="links-panel" id="links-panel">
+      <div class="links-panel-header"><h3>Links</h3></div>
+      <div class="links-list" id="links-list"></div>
+    </div>
   </div>
-  <div class="tabs-bar" id="tabs-bar"></div>
-  <div id="tab-panels"></div>
+
+  <!-- ── REPORT VIEW ── -->
+  <div class="view" id="view-report">
+    <div class="report-grid">
+      <div class="report-stats" id="report-stats"></div>
+      <div class="report-panel">
+        <div class="report-mode-switch">
+          <button class="rmode-btn active" id="rmode-density" onclick="setReportMode('density')">
+            <span class="rm-t">Rank by Vulnerability Density</span>
+            <span class="rm-s">Average count of critical vulnerabilities per asset</span>
+          </button>
+          <button class="rmode-btn" id="rmode-eol" onclick="setReportMode('eol')">
+            <span class="rm-t">Rank by EOL Density</span>
+            <span class="rm-s">% of assets with an end-of-life OS</span>
+          </button>
+        </div>
+        <div class="report-panel-header">
+          <h3 id="rep-title">Repositories</h3>
+          <div class="hdr-search">
+            <input id="rep-search" placeholder="Search" autocomplete="off">
+            <button class="clr" id="rep-search-clr" title="Clear">&#10005;</button>
+          </div>
+          <div class="col-cog-wrap">
+            <button class="col-cog-btn" id="repcog-btn" title="Table options">&#9881;</button>
+            <div class="col-cog-dropdown" id="repcog-menu">
+              <div class="col-cog-title">Columns</div>
+              <div class="col-toggle-list" id="repcog-cols"></div>
+              <hr class="col-cog-sep">
+              <div class="col-cog-title">Min assets per repo</div>
+              <div class="cog-num-row"><input type="number" min="0" step="1" value="0" class="cog-num" id="repcog-min"></div>
+              <hr class="col-cog-sep">
+              <div class="col-cog-title">Export</div>
+              <button class="col-csv-btn" onclick="exportReportCSV()">&#8595; Export to CSV</button>
+            </div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table report-table" id="rep-table"><thead><tr id="rep-thead"></tr></thead><tbody id="rep-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
-<div class="toast" id="toast"></div>
 
 <script>
-// Capture pristine template before any rendering touches the DOM
-var _pageTemplate = document.documentElement.outerHTML;
+// Template captured before rendering. DOCTYPE preserved for standards mode.
+var _pageTemplate = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
 
-// THEME
-function toggleTheme() {
-  var next = document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  try { localStorage.setItem('vs-theme', next); } catch(e) {}
-}
-(function() {
-  try { var s=localStorage.getItem('vs-theme'); if(s) document.documentElement.setAttribute('data-theme',s); } catch(e) {}
-})();
+// Built dynamically so these literals never appear in source — otherwise the
+// strip regex below would match this file's own code and destroy the export.
+var SCRIPT_OPEN  = '<' + 'script>';
+var SCRIPT_CLOSE = '<' + '/' + 'script>';
+var BAKED_KEY    = '__' + 'BAKED' + '__';
+var BAKED_STRIP  = new RegExp('<script[^>]*>\\s*window\\.' + BAKED_KEY + '\\s*=[\\s\\S]*?<\\/script>\\s*', 'g');
 
-// STATE
+// ══════════ STATE ══════════
 var state = { assetsText:null, reposText:null, eolText:null };
-var sortState   = {};
-var filterState = {};  // tabId -> { repoSearch, assetSearch, repoFilters:{} }
-var panelData   = {};  // tabId -> { repoData, assetData, hasEOL, repoOwnerMap, owners, isAllTab }
-var globalTabs  = [], globalOwners = [];
+var D = { assets:[], owners:[], repoOwnerMap:{}, hasEOL:false, hasOwners:false,
+          reportDate:'', title:'', classification:'', links:[] };
+var ownerScope=null, breakdownSel={}, repoFilters={};
+var searches={ repo:'', asset:'', rep:'' };
+var sortState={ repo:{key:'avg',dir:'desc'}, asset:{key:'critical',dir:'desc'} };
+var currentView='asset', reportMode='density';
+var repoCols  = { owner:true, assets:true, eol:true, eolPct:true, crit:true, avg:true };
+var assetCols = { ip:true, repo:true, crit:true, high:false, med:false, low:false, eol:true, eolOS:true };
+var repDensCols = { assets:true, crit:true, avg:true };
+var minAssetsRepo=0, minAssetsReport=0;
+var repEolCols  = { assets:true, eol:true, eolPct:true };
+var vs = { data:[], makeRow:null, colSpan:1, measuredH:0, lastStart:0 };
+var VS_ROW_H=37, VS_OVERSCAN=15;
 
-// Close any open cog dropdown when clicking outside
-(function() {
-  document.addEventListener('click', function() {
-    var drops = document.querySelectorAll('.col-cog-dropdown.open');
-    var cogs  = document.querySelectorAll('.col-cog-btn.open');
-    for (var i=0; i<drops.length; i++) drops[i].classList.remove('open');
-    for (var i=0; i<cogs.length;  i++) cogs[i].classList.remove('open');
+// ══════════ THEME ══════════
+function toggleTheme(){
+  var n=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',n);
+  try{ localStorage.setItem('vs-theme',n); }catch(e){}
+  syncThemeLabel();
+}
+function syncThemeLabel(){
+  var d=document.documentElement.getAttribute('data-theme')==='dark';
+  var i=document.getElementById('theme-icon'), l=document.getElementById('theme-label');
+  if(i) i.innerHTML=d?'&#9790;':'&#9788;';
+  if(l) l.textContent=d?'Light Mode':'Dark Mode';
+}
+(function(){ try{ var s=localStorage.getItem('vs-theme'); if(s) document.documentElement.setAttribute('data-theme',s);}catch(e){} })();
+
+document.addEventListener('click', function(){
+  var ds=document.querySelectorAll('.hdrop-menu.open, .col-cog-dropdown.open');
+  for(var i=0;i<ds.length;i++) ds[i].classList.remove('open');
+  var bs=document.querySelectorAll('.hdrop-btn.open, .col-cog-btn.open');
+  for(var j=0;j<bs.length;j++) bs[j].classList.remove('open');
+});
+function wireDrop(btnId,menuId){
+  var b=document.getElementById(btnId), m=document.getElementById(menuId);
+  if(!b||!m) return;
+  b.addEventListener('click',function(e){
+    e.stopPropagation();
+    var was=m.classList.contains('open');
+    var ds=document.querySelectorAll('.hdrop-menu.open, .col-cog-dropdown.open');
+    for(var i=0;i<ds.length;i++) ds[i].classList.remove('open');
+    var bs=document.querySelectorAll('.hdrop-btn.open, .col-cog-btn.open');
+    for(var j=0;j<bs.length;j++) bs[j].classList.remove('open');
+    if(!was){ m.classList.add('open'); b.classList.add('open'); }
   });
-})();
+  m.addEventListener('click',function(e){ e.stopPropagation(); });
+}
+function debounce(fn,ms){ var t; return function(){ var a=arguments,c=this; clearTimeout(t); t=setTimeout(function(){fn.apply(c,a);},ms); }; }
+function esc(s){ return String(s===null||s===undefined?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function highlight(t,q){ if(!q||!t) return esc(t); var i=t.toLowerCase().indexOf(q.toLowerCase()); if(i===-1) return esc(t);
+  return esc(t.slice(0,i))+'<mark>'+esc(t.slice(i,i+q.length))+'</mark>'+esc(t.slice(i+q.length)); }
 
-// VULN COLUMN VISIBILITY — per tab, keys: crit, high, med, low
-var colVis = {};  // tabId -> { crit:bool, high:bool, med:bool, low:bool }
-function getColVis(tabId) {
-  if (!colVis[tabId]) colVis[tabId] = { crit:true, high:false, med:false, low:false };
-  return colVis[tabId];
+// ══════════ LINKS SETUP ══════════
+function addLinkRow(t,u,d){
+  var c=document.getElementById('links-rows');
+  var row=document.createElement('div');
+  row.className='link-row';
+  row.innerHTML='<input class="lk-t" placeholder="Title" autocomplete="off">'+
+                '<input class="lk-u" placeholder="https://..." autocomplete="off">'+
+                '<input class="lk-d" placeholder="Short description" autocomplete="off">'+
+                '<button class="link-del" title="Remove">&#10005;</button>';
+  c.appendChild(row);
+  var it=row.querySelector('.lk-t'), iu=row.querySelector('.lk-u'), id2=row.querySelector('.lk-d');
+  if(it&&t) it.value=t;
+  if(iu&&u) iu.value=u;
+  if(id2&&d) id2.value=d;
+  var del=row.querySelector('.link-del');
+  if(del) del.addEventListener('click',function(){ c.removeChild(row); });
+}
+function collectLinks(){
+  var out=[], rows=document.querySelectorAll('#links-rows .link-row');
+  for(var i=0;i<rows.length;i++){
+    var t=rows[i].querySelector('.lk-t').value.trim();
+    var u=rows[i].querySelector('.lk-u').value.trim();
+    var d=rows[i].querySelector('.lk-d').value.trim();
+    if(t&&u) out.push({title:t,url:u,desc:d});
+  }
+  return out;
+}
+function renderLinks(){
+  var p=document.getElementById('links-panel'), l=document.getElementById('links-list');
+  if(!D.links||!D.links.length){ p.classList.remove('visible'); return; }
+  p.classList.add('visible');
+  l.innerHTML=D.links.map(function(k){
+    var safe=/^https?:\/\//i.test(k.url)?k.url:('https://'+k.url.replace(/^\/+/,''));
+    return '<a class="link-card" href="'+esc(safe)+'" target="_blank" rel="noopener noreferrer">'+
+      '<span class="lt">'+esc(k.title)+'<span class="arr">&#8599;</span></span>'+
+      (k.desc?'<span class="ld">'+esc(k.desc)+'</span>':'')+'</a>';
+  }).join('');
 }
 
-// PENDING PANELS — for lazy building: tabs not yet built store their args here
-var pendingPanels = {}; // tabId -> { panelEl, tab, hasEOL, owners, repoOwnerMap }
-
-// VIRTUAL SCROLL STATE — per asset table
-// Each entry: { data, makeRow, colSpan, measuredH }
-var vsState = {};
-var VS_ROW_H   = 37;   // fallback row height (px) — measured from DOM after first render
-var VS_OVERSCAN = 15;  // rows to keep rendered above and below the visible window
-
-// DEBOUNCE
-function debounce(fn, ms) {
-  var t;
-  return function() {
-    var args = arguments, ctx = this;
-    clearTimeout(t);
-    t = setTimeout(function(){ fn.apply(ctx, args); }, ms);
-  };
-}
-
-// DATE LABEL — isoDate is 'YYYY-MM-DD' (full date input value)
-function setDateLabel(isoDate) {
-  var el = document.getElementById('action-bar-date');
-  if (!el) return;
-  if (!isoDate) { el.textContent = ''; return; }
-  var parts = isoDate.split('-');
-  var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  var m = parseInt(parts[1], 10) - 1;
-  var d = parseInt(parts[2], 10);
-  el.textContent = d + ' ' + (months[m] || '') + ' ' + (parts[0] || '');
-}
-
-// EXPORT SCOPE NOTE
-function updateExportScopeNote() {
-  var note = document.getElementById('export-scope-note');
-  if (!note) return;
-  var activeBtn   = document.querySelector('.tab-btn.active');
-  var activeTabId = activeBtn ? activeBtn.getAttribute('data-tab-id') : 'all';
-  var isAll = activeTabId === 'all';
-  var fs  = filterState[activeTabId];
-  var rfc = fs ? Object.keys(fs.repoFilters).length : 0;
-  var msg = '';
-  if (!isAll && rfc > 0)  msg = '\u26a0 Owner tab + '+rfc+' repo filter'+(rfc>1?'s':'')+' active \u2014 snapshot will contain only this filtered data.';
-  else if (!isAll)        msg = '\u26a0 Owner tab active \u2014 snapshot will contain only this owner\'s data.';
-  else if (rfc > 0)       msg = '\u26a0 '+rfc+' repo filter'+(rfc>1?'s':'')+' active \u2014 snapshot will contain only filtered repositories.';
-  note.textContent = msg;
-  note.classList.toggle('visible', msg !== '');
-}
-
-// FILE LOADING
-function dragOver(e, id)  { e.preventDefault(); document.getElementById(id).classList.add('drag-over'); }
-function dragLeave(e, id) { document.getElementById(id).classList.remove('drag-over'); }
-function dropFile(e, type) {
-  e.preventDefault();
-  var ids = { assets:'slot-assets', repos:'slot-repos', eol:'slot-eol' };
+// ══════════ FILE LOADING ══════════
+function dragOver(e,id){ e.preventDefault(); document.getElementById(id).classList.add('drag-over'); }
+function dragLeave(e,id){ document.getElementById(id).classList.remove('drag-over'); }
+function dropFile(e,type){ e.preventDefault();
+  var ids={assets:'slot-assets',repos:'slot-repos',eol:'slot-eol'};
   document.getElementById(ids[type]).classList.remove('drag-over');
-  var file = e.dataTransfer.files[0]; if (file) readFile(file, type);
-}
-function loadFile(input, type) { if (input.files[0]) readFile(input.files[0], type); }
-function readFile(file, type) {
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var key = type==='assets'?'assetsText': type==='repos'?'reposText':'eolText';
-    state[key] = e.target.result;
-    var si  = { assets:'slot-assets',   repos:'slot-repos',   eol:'slot-eol' };
-    var sti = { assets:'status-assets', repos:'status-repos', eol:'status-eol' };
-    markLoaded(si[type], sti[type]);
-    // Only Assets.csv is required
-    document.getElementById('btn-load').disabled = !state.assetsText;
-    document.getElementById('upload-error').style.display = 'none';
+  var f=e.dataTransfer.files[0]; if(f) readFile(f,type); }
+function loadFile(inp,type){ if(inp.files[0]) readFile(inp.files[0],type); }
+function readFile(file,type){
+  var r=new FileReader();
+  r.onload=function(e){
+    state[type==='assets'?'assetsText':type==='repos'?'reposText':'eolText']=e.target.result;
+    var si={assets:'slot-assets',repos:'slot-repos',eol:'slot-eol'};
+    var st={assets:'status-assets',repos:'status-repos',eol:'status-eol'};
+    document.getElementById(si[type]).classList.add('loaded');
+    document.getElementById(st[type]).style.display='block';
+    document.getElementById('btn-load').disabled=!state.assetsText;
+    document.getElementById('upload-error').style.display='none';
   };
-  reader.readAsText(file);
-}
-function markLoaded(slotId, statusId) {
-  document.getElementById(slotId).classList.add('loaded');
-  document.getElementById(statusId).style.display = 'block';
+  r.readAsText(file);
 }
 
-// CSV PARSING
-function parseCSV(text) {
-  text = text.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-  var lines = text.split('\n').filter(function(l){ return l.trim(); });
-  if (!lines.length) return [];
-  var headers = splitCSVRow(lines[0]).map(function(h){ return h.trim(); });
-  return lines.slice(1).filter(function(l){ return l.trim(); }).map(function(line) {
-    var vals = splitCSVRow(line), obj = {};
-    headers.forEach(function(h,i){ obj[h] = (vals[i]!==undefined?vals[i]:'').trim(); });
-    return obj;
+// ══════════ CSV PARSING ══════════
+function parseCSV(text){
+  text=text.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  var lines=text.split('\n').filter(function(l){return l.trim();});
+  if(!lines.length) return [];
+  var h=splitCSVRow(lines[0]).map(function(x){return x.trim();});
+  return lines.slice(1).filter(function(l){return l.trim();}).map(function(line){
+    var v=splitCSVRow(line),o={};
+    h.forEach(function(k,i){ o[k]=(v[i]!==undefined?v[i]:'').trim(); });
+    return o;
   });
 }
-function splitCSVRow(row) {
-  var result=[], cur='', inQ=false;
-  for (var i=0; i<row.length; i++) {
-    var c=row[i];
-    if (c==='"') { inQ=!inQ; }
-    else if (c===',' && !inQ) { result.push(cur); cur=''; }
-    else cur+=c;
-  }
-  result.push(cur); return result;
+function splitCSVRow(row){
+  var out=[],cur='',q=false;
+  for(var i=0;i<row.length;i++){ var c=row[i];
+    if(c==='"'){q=!q;} else if(c===','&&!q){out.push(cur);cur='';} else cur+=c; }
+  out.push(cur); return out;
 }
-function col(row) {
-  var aliases = Array.prototype.slice.call(arguments, 1);
-  for (var i=0; i<aliases.length; i++) {
-    var keys = Object.keys(row);
-    for (var j=0; j<keys.length; j++) {
-      if (keys[j].toLowerCase()===aliases[i].toLowerCase() && row[keys[j]]!=='') return row[keys[j]];
-    }
-  }
+function col(row){
+  var al=Array.prototype.slice.call(arguments,1);
+  for(var i=0;i<al.length;i++){ var ks=Object.keys(row);
+    for(var j=0;j<ks.length;j++) if(ks[j].toLowerCase()===al[i].toLowerCase()&&row[ks[j]]!=='') return row[ks[j]]; }
   return '';
 }
-function parseRepoList(str) {
-  str = str.trim().replace(/^\[/,'').replace(/\]$/,'');
-  var quoted=[], m, re=/['"]([^'"]*)['"]/g;
-  while ((m=re.exec(str))!==null) { if (m[1].trim()) quoted.push(m[1].trim()); }
-  if (quoted.length) return quoted;
-  return str.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+function parseRepoList(s){
+  s=s.trim().replace(/^\[/,'').replace(/\]$/,'');
+  var q=[],m,re=/['"]([^'"]*)['"]/g;
+  while((m=re.exec(s))!==null){ if(m[1].trim()) q.push(m[1].trim()); }
+  if(q.length) return q;
+  return s.split(',').map(function(x){return x.trim();}).filter(Boolean);
 }
-function parseOwner(str) { return str.trim().replace(/^\[/,'').replace(/\]$/,'').trim(); }
+function parseOwner(s){ return s.trim().replace(/^\[/,'').replace(/\]$/,'').trim(); }
 
-// BUILD DASHBOARD
-function buildDashboard(bakedData) {
+// ══════════ BUILD ══════════
+function buildDashboard(baked){
   try {
-    var assets, owners, eolSet, eolPluginMap, hasEOL, reportDate;
-    if (bakedData) {
-      assets = bakedData.assets; owners = bakedData.owners;
-      eolSet = {}; (bakedData.eolKeys||[]).forEach(function(k){ eolSet[k]=true; });
-      eolPluginMap = {}; (bakedData.eolPlugins||[]).forEach(function(p){ eolPluginMap[p[0]]=p[1]; });
-      hasEOL = bakedData.hasEOL || false;
-      reportDate = bakedData.reportDate || '';
+    var assets,owners,eolSet,eolPlug,hasEOL,reportDate,title,classification,links;
+    if(baked){
+      assets=baked.assets; owners=baked.owners;
+      eolSet={}; (baked.eolKeys||[]).forEach(function(k){eolSet[k]=true;});
+      eolPlug={}; (baked.eolPlugins||[]).forEach(function(p){eolPlug[p[0]]=p[1];});
+      hasEOL=baked.hasEOL||false; reportDate=baked.reportDate||'';
+      title=baked.title||''; classification=baked.classification||''; links=baked.links||[];
     } else {
-      // Parse assets (required)
-      var rawAssets = parseCSV(state.assetsText);
-      assets = [];
-      rawAssets.forEach(function(r) {
-        var dns = col(r,'DNS Name','dns name','hostname','asset');
-        var ip  = col(r,'IP Address','ip address','ip');
-        if (!dns && !ip) return;
-        var repo = col(r,'Repository','repo');
-        if (!repo) return;
+      assets=[];
+      parseCSV(state.assetsText).forEach(function(r){
+        var dns=col(r,'DNS Name','dns name','hostname','asset');
+        var ip =col(r,'IP Address','ip address','ip');
+        if(!dns&&!ip) return;
+        var repo=col(r,'Repository','repo'); if(!repo) return;
         assets.push({ asset:dns||ip, dns:dns, ip:ip, repo:repo,
-          critical: parseInt(col(r,'Crit.','Critical','crit'))||0,
-          high:     parseInt(col(r,'High'))||0,
-          medium:   parseInt(col(r,'Med.','Medium','med'))||0,
-          low:      parseInt(col(r,'Low'))||0 });
+          critical:parseInt(col(r,'Crit.','Critical','crit'))||0,
+          high:parseInt(col(r,'High'))||0,
+          medium:parseInt(col(r,'Med.','Medium','med'))||0,
+          low:parseInt(col(r,'Low'))||0 });
       });
-
-      // Parse repositories (optional)
-      owners = [];
-      if (state.reposText) {
-        parseCSV(state.reposText).forEach(function(r) {
-          var owner = parseOwner(col(r,'Owner','Group','owner','group'));
-          var repos = parseRepoList(col(r,'Repository','Repositories','repo'));
-          if (owner && repos.length) owners.push({ owner:owner, repos:repos });
+      owners=[];
+      if(state.reposText){
+        parseCSV(state.reposText).forEach(function(r){
+          var o=parseOwner(col(r,'Owner','Group','Division','owner','group','division'));
+          var rp=parseRepoList(col(r,'Repository','Repositories','repo'));
+          if(o&&rp.length) owners.push({owner:o,repos:rp});
         });
       }
-
-      // Parse EOL (optional)
-      eolSet = {}; eolPluginMap = {}; hasEOL = false;
-      if (state.eolText) {
-        parseCSV(state.eolText).forEach(function(r) {
-          var dns = col(r,'DNS Name','dns name','hostname');
-          var ip  = col(r,'IP Address','ip address','ip');
-          var pl  = col(r,'Plugin Name','plugin name','plugin');
-          [dns,ip].filter(Boolean).forEach(function(k) {
+      eolSet={}; eolPlug={}; hasEOL=false;
+      if(state.eolText){
+        parseCSV(state.eolText).forEach(function(r){
+          var dns=col(r,'DNS Name','dns name','hostname');
+          var ip =col(r,'IP Address','ip address','ip');
+          var pl =col(r,'Plugin Name','plugin name','plugin');
+          [dns,ip].filter(Boolean).forEach(function(k){
             var key=k.toLowerCase(); eolSet[key]=true;
-            if (pl && !eolPluginMap[key]) eolPluginMap[key]=pl;
+            if(pl&&!eolPlug[key]) eolPlug[key]=pl;
           });
         });
-        hasEOL = Object.keys(eolSet).length > 0;
+        hasEOL=Object.keys(eolSet).length>0;
       }
-
-      var di = document.getElementById('report-date');
-      reportDate = di ? di.value : '';
+      var di=document.getElementById('report-date');
+      reportDate=di?di.value:'';
+      title=(document.getElementById('setup-title')||{}).value||'';
+      classification=(document.getElementById('setup-class')||{}).value||'';
+      links=collectLinks();
     }
 
-    if (!assets.length) throw new Error('No valid asset rows found.');
-    assets.forEach(function(a) {
+    if(!assets.length) throw new Error('No valid asset rows found.');
+    assets.forEach(function(a){
       var dk=(a.dns||'').toLowerCase(), ik=(a.ip||'').toLowerCase();
-      a.isEOL    = !!(eolSet[dk] || eolSet[ik]);
-      a.eolPlugin = eolPluginMap[dk] || eolPluginMap[ik] || '';
+      a.isEOL=!!(eolSet[dk]||eolSet[ik]);
+      a.eolPlugin=eolPlug[dk]||eolPlug[ik]||'';
     });
 
-    var repoOwnerMap = {};
-    owners.forEach(function(o){ o.repos.forEach(function(r){ repoOwnerMap[r]=o.owner; }); });
-    globalOwners = owners;
+    var rom={}; owners.forEach(function(o){ o.repos.forEach(function(r){ rom[r]=o.owner; }); });
+    D.assets=assets; D.owners=owners; D.repoOwnerMap=rom;
+    D.hasEOL=hasEOL; D.hasOwners=owners.length>0;
+    D.reportDate=reportDate; D.title=title||'Vulnerability Dashboard';
+    D.classification=classification; D.links=links||[];
 
-    var tabs = [{ id:'all', label:'All', assets:assets }];
-    owners.forEach(function(o) {
-      var rs={}; o.repos.forEach(function(r){ rs[r]=true; });
-      tabs.push({ id:'owner_'+o.owner, label:o.owner, assets:assets.filter(function(a){ return rs[a.repo]; }) });
-    });
-    globalTabs = tabs;
-
-    window._dashboardRaw = { assets:assets, owners:owners, hasEOL:hasEOL,
+    window._raw = { assets:assets, owners:owners, hasEOL:hasEOL,
       eolKeys:Object.keys(eolSet),
-      eolPlugins:Object.keys(eolPluginMap).map(function(k){ return [k, eolPluginMap[k]]; }),
-      repoOwnerMap:repoOwnerMap, reportDate:reportDate };
+      eolPlugins:Object.keys(eolPlug).map(function(k){return [k,eolPlug[k]];}),
+      repoOwnerMap:rom, reportDate:reportDate, title:D.title,
+      classification:classification, links:D.links };
 
+    document.getElementById('dash-title').textContent=D.title;
     setDateLabel(reportDate);
-    renderTabs(tabs, hasEOL, owners, repoOwnerMap);
-    document.getElementById('upload-screen').style.display = 'none';
-    document.getElementById('dashboard-screen').style.display = 'block';
-    updateExportScopeNote();
-  } catch(err) {
-    var el = document.getElementById('upload-error');
-    el.textContent = '\u26a0 ' + err.message; el.style.display = 'block';
-    if (window.console) console.error(err);
+    var cb=document.getElementById('classification-banner');
+    if(classification){ cb.textContent=classification; cb.classList.add('visible'); }
+    else cb.classList.remove('visible');
+
+    // defaults
+    ownerScope=null; breakdownSel={}; repoFilters={};
+    searches={repo:'',asset:'',rep:''};
+    if(!hasEOL){ repoCols.eol=false; repoCols.eolPct=false; assetCols.eol=false; assetCols.eolOS=false; }
+    if(!D.hasOwners) repoCols.owner=false;
+
+    // restore saved UI config from a snapshot
+    if(baked && baked.cfg) applyConfig(baked.cfg);
+
+    buildScopeMenu(); buildColMenus(); renderLinks(); syncThemeLabel();
+    document.getElementById('upload-screen').style.display='none';
+    document.getElementById('dashboard-screen').style.display='block';
+    syncSearchInputs(); syncMinInputs();
+    setView(currentView);
+    renderAll();
+  } catch(err){
+    var el=document.getElementById('upload-error');
+    el.textContent='\u26a0 '+err.message; el.style.display='block';
+    if(window.console) console.error(err);
   }
 }
 
-// TABS — lazy panel building: only the first tab is built immediately
-function renderTabs(tabs, hasEOL, owners, repoOwnerMap) {
-  var bar = document.getElementById('tabs-bar'), panels = document.getElementById('tab-panels');
-  bar.innerHTML = ''; panels.innerHTML = '';
-  pendingPanels = {};
-  bar.classList.toggle('hidden', tabs.length <= 1);
-
-  tabs.forEach(function(tab, i) {
-    var btn = document.createElement('button');
-    btn.className = 'tab-btn' + (i===0?' active':'');
-    btn.textContent = tab.label;
-    btn.setAttribute('data-tab-id', tab.id);
-    btn.onclick = (function(id){ return function(){ switchTab(id); }; })(tab.id);
-    bar.appendChild(btn);
-
-    sortState[tab.id]   = { repo:{key:'avg',dir:'desc'}, asset:{key:'critical',dir:'desc'} };
-    filterState[tab.id] = { repoSearch:'', assetSearch:'', repoFilters:{} };
-
-    var panel = document.createElement('div');
-    panel.className = 'tab-panel' + (i===0?' active':'');
-    panel.id = 'panel_' + tab.id;
-    panels.appendChild(panel);
-
-    if (i === 0) {
-      // Build the first (visible) tab immediately
-      buildPanel(panel, tab, hasEOL, owners, repoOwnerMap, owners.length > 0);
-    } else {
-      // Defer all other tabs — build on first activation
-      pendingPanels[tab.id] = { panelEl:panel, tab:tab, hasEOL:hasEOL, owners:owners, repoOwnerMap:repoOwnerMap, hasOwners:owners.length > 0 };
-    }
-  });
+function currentConfig(){
+  return { ownerScope:ownerScope, breakdownSel:breakdownSel, repoFilters:repoFilters,
+           searches:searches, sortState:sortState, view:currentView, reportMode:reportMode,
+           repoCols:repoCols, assetCols:assetCols, repDensCols:repDensCols, repEolCols:repEolCols,
+           minAssetsRepo:minAssetsRepo, minAssetsReport:minAssetsReport,
+           theme:document.documentElement.getAttribute('data-theme') };
+}
+function applyConfig(c){
+  if(!c) return;
+  if(c.ownerScope!==undefined) ownerScope=c.ownerScope;
+  if(c.breakdownSel) breakdownSel=c.breakdownSel;
+  if(c.repoFilters)  repoFilters=c.repoFilters;
+  if(c.searches)     searches=c.searches;
+  if(c.sortState)    sortState=c.sortState;
+  if(c.view)         currentView=c.view;
+  if(c.reportMode)   reportMode=c.reportMode;
+  if(c.repoCols)     repoCols=c.repoCols;
+  if(c.assetCols)    assetCols=c.assetCols;
+  if(c.repDensCols)  repDensCols=c.repDensCols;
+  if(c.repEolCols)   repEolCols=c.repEolCols;
+  if(typeof c.minAssetsRepo==='number')   minAssetsRepo=c.minAssetsRepo;
+  if(typeof c.minAssetsReport==='number') minAssetsReport=c.minAssetsReport;
+  if(c.theme) document.documentElement.setAttribute('data-theme',c.theme);
+  // Owner scope may not exist in a scoped snapshot's owner list — clear if absent
+  if(ownerScope){
+    var ok=false;
+    for(var i=0;i<D.owners.length;i++) if(D.owners[i].owner===ownerScope) ok=true;
+    if(!ok) ownerScope=null;
+  }
+}
+function syncMinInputs(){
+  var a=document.getElementById('rcog-min'); if(a) a.value=minAssetsRepo||0;
+  var b=document.getElementById('repcog-min'); if(b) b.value=minAssetsReport||0;
+}
+function syncSearchInputs(){
+  var m=[['repo-search','repo'],['asset-search','asset'],['rep-search','rep']];
+  for(var i=0;i<m.length;i++){
+    var el=document.getElementById(m[i][0]); if(!el) continue;
+    el.value=searches[m[i][1]]||'';
+    var c=document.getElementById(m[i][0]+'-clr');
+    if(c) c.classList.toggle('visible',!!el.value);
+  }
+}
+function setDateLabel(iso){
+  var el=document.getElementById('dash-date'); if(!el) return;
+  if(!iso){ el.textContent=''; return; }
+  var p=iso.split('-');
+  var M=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  el.textContent=parseInt(p[2],10)+' '+(M[parseInt(p[1],10)-1]||'')+' '+p[0];
 }
 
-function switchTab(id) {
-  var btns = document.querySelectorAll('.tab-btn');
-  for (var i=0; i<btns.length; i++) btns[i].classList.toggle('active', btns[i].getAttribute('data-tab-id')===id);
-  var ps = document.querySelectorAll('.tab-panel');
-  for (var j=0; j<ps.length; j++) ps[j].classList.toggle('active', ps[j].id==='panel_'+id);
+// ══════════ DIVISION MENU (filter + breakdown) ══════════
+function buildScopeMenu(){
+  var wrap=document.getElementById('hd-scope-wrap'), menu=document.getElementById('hd-scope-menu');
+  if(!D.hasOwners){ wrap.style.display='none'; return; }
+  wrap.style.display='';
+  var h='<div class="hdrop-title">Filter by Division</div>';
+  h+='<button class="hdrop-item'+(ownerScope===null?' sel':'')+'" data-f=""><span class="tick">'+(ownerScope===null?'&#10003;':'')+'</span>All Divisions</button>';
+  D.owners.forEach(function(o){
+    h+='<button class="hdrop-item'+(ownerScope===o.owner?' sel':'')+'" data-f="'+esc(o.owner)+'"><span class="tick">'+(ownerScope===o.owner?'&#10003;':'')+'</span>'+esc(o.owner)+'</button>';
+  });
+  h+='<hr class="hdrop-sep"><div class="hdrop-title">Show in stat cards</div>';
+  D.owners.forEach(function(o){
+    var on=!!breakdownSel[o.owner];
+    h+='<button class="hdrop-item'+(on?' sel':'')+'" data-b="'+esc(o.owner)+'"><span class="tick">'+(on?'&#10003;':'')+'</span>'+esc(o.owner)+'</button>';
+  });
+  h+='<div class="hdrop-actions"><button class="hdrop-mini" data-act="all">Select all</button><button class="hdrop-mini" data-act="none">Clear</button></div>';
+  menu.innerHTML=h;
 
-  // Build panel now if it hasn't been built yet
-  if (pendingPanels[id]) {
-    var p = pendingPanels[id];
-    delete pendingPanels[id];
-    buildPanel(p.panelEl, p.tab, p.hasEOL, p.owners, p.repoOwnerMap, p.hasOwners);
+  var fs=menu.querySelectorAll('[data-f]');
+  for(var i=0;i<fs.length;i++){
+    (function(b){ b.addEventListener('click',function(){
+      var v=b.getAttribute('data-f'); ownerScope=v===''?null:v; repoFilters={};
+      buildScopeMenu(); renderAll(); updateExportNote();
+      menu.classList.remove('open'); document.getElementById('hd-scope-btn').classList.remove('open');
+    }); })(fs[i]);
   }
-  updateExportScopeNote();
+  var bsl=menu.querySelectorAll('[data-b]');
+  for(var j=0;j<bsl.length;j++){
+    (function(b){ b.addEventListener('click',function(){
+      var o=b.getAttribute('data-b');
+      if(breakdownSel[o]) delete breakdownSel[o]; else breakdownSel[o]=true;
+      buildScopeMenu(); renderStats();
+      menu.classList.add('open'); document.getElementById('hd-scope-btn').classList.add('open');
+    }); })(bsl[j]);
+  }
+  var acts=menu.querySelectorAll('.hdrop-mini');
+  for(var k=0;k<acts.length;k++){
+    (function(b){ b.addEventListener('click',function(){
+      if(b.getAttribute('data-act')==='all') D.owners.forEach(function(o){breakdownSel[o.owner]=true;});
+      else breakdownSel={};
+      buildScopeMenu(); renderStats();
+      menu.classList.add('open'); document.getElementById('hd-scope-btn').classList.add('open');
+    }); })(acts[k]);
+  }
+  var n=Object.keys(breakdownSel).length;
+  document.getElementById('hd-scope-val').textContent=(ownerScope||'All')+(n?' \u00b7 '+n+' shown':'');
 }
 
-// PANEL CONSTRUCTION
-function buildPanel(panelEl, tab, hasEOL, owners, repoOwnerMap, hasOwners) {
-  var assets = tab.assets;
-  if (!assets.length) { panelEl.innerHTML='<div class="empty-state">No assets found for this owner.</div>'; return; }
+// ══════════ COLUMN MENUS ══════════
+var REPO_COL_DEFS=[ {k:'owner',label:'Division',cls:''},{k:'assets',label:'Assets',cls:''},
+  {k:'eol',label:'EOL Count',cls:'t-eol'},{k:'eolPct',label:'EOL %',cls:'t-eol'},
+  {k:'crit',label:'Criticals',cls:'t-crit'},{k:'avg',label:'Avg Crit/Asset',cls:'t-crit'} ];
+var ASSET_COL_DEFS=[ {k:'ip',label:'IP Address',cls:''},{k:'repo',label:'Repository',cls:''},
+  {k:'crit',label:'Criticals',cls:'t-crit'},{k:'high',label:'High',cls:'t-high'},
+  {k:'med',label:'Medium',cls:'t-med'},{k:'low',label:'Low',cls:'t-low'},
+  {k:'eol',label:'EOL',cls:'t-eol'},{k:'eolOS',label:'EOL OS',cls:'t-eol'} ];
+var REP_DENS_DEFS=[ {k:'assets',label:'Assets',cls:''},{k:'crit',label:'Criticals',cls:'t-crit'},
+  {k:'avg',label:'Avg Crit/Asset',cls:'t-crit'} ];
+var REP_EOL_DEFS=[ {k:'assets',label:'Assets',cls:''},{k:'eol',label:'EOL Assets',cls:'t-eol'},
+  {k:'eolPct',label:'EOL %',cls:'t-eol'} ];
 
-  var isAllTab = tab.id === 'all';
-  var repoMap  = {};
-  assets.forEach(function(a) {
-    if (!repoMap[a.repo]) repoMap[a.repo] = { repo:a.repo, owner:repoOwnerMap[a.repo]||'', assets:0, crit:0, eol:0 };
-    repoMap[a.repo].assets++;
-    repoMap[a.repo].crit += a.critical;
-    if (a.isEOL) repoMap[a.repo].eol++;
+function buildToggleList(containerId,defs,store,after){
+  var c=document.getElementById(containerId); if(!c) return;
+  var h='';
+  defs.forEach(function(d){
+    if((d.k==='eol'||d.k==='eolPct'||d.k==='eolOS')&&!D.hasEOL) return;
+    if(d.k==='owner'&&!D.hasOwners) return;
+    h+='<button class="col-toggle-btn '+d.cls+(store[d.k]?' active':'')+'" data-k="'+d.k+'">'+d.label+'</button>';
   });
-  var repoData = Object.keys(repoMap).map(function(k) {
-    var r=repoMap[k]; return { repo:r.repo, owner:r.owner, assets:r.assets, crit:r.crit, eol:r.eol, avg:r.assets?r.crit/r.assets:0 };
-  });
-  panelData[tab.id] = { repoData:repoData, assetData:assets, hasEOL:hasEOL, repoOwnerMap:repoOwnerMap, owners:owners, isAllTab:isAllTab, hasOwners:hasOwners };
-
-  function ownerBreakdown(metric) {
-    if (!isAllTab || !owners.length) return '';
-    var ownerStats = owners.map(function(o) {
-      var oA   = assets.filter(function(a){ return (repoOwnerMap[a.repo]||'')===o.owner; });
-      var crit = oA.reduce(function(s,a){ return s+a.critical; }, 0);
-      var avg  = oA.length ? crit/oA.length : 0;
-      return { owner:o.owner, assetCount:oA.length, crit:crit, avg:avg, eol:oA.filter(function(a){ return a.isEOL; }).length };
-    });
-    ownerStats.sort(function(a,b){ return b.avg - a.avg; });
-    var rows = ownerStats.map(function(o) {
-      var tid2='owner_'+o.owner, val;
-      if (metric==='assets') val = o.assetCount;
-      else if (metric==='eol') {
-        var pct = o.assetCount>0 ? Math.round((o.eol/o.assetCount)*100) : 0;
-        val = o.eol + (o.eol>0 ? ' ('+pct+'%)' : '');
-      }
-      else if (metric==='crit') val = o.crit;
-      else if (metric==='avg')  val = o.assetCount ? o.avg.toFixed(2) : '0.00';
-      var nameHtml = '<button class="owner-stat-btn" onclick="switchTab(\''+tid2+'\')">'+esc(o.owner)+'</button>';
-      return '<div class="owner-stat-row">'+nameHtml+'<span class="owner-stat-val">'+val+'</span></div>';
-    });
-    return '<div class="stat-owner-breakdown" id="breakdown-'+metric+'-'+tab.id+'">'+rows.join('')+'</div>';
+  c.innerHTML=h;
+  var bs=c.querySelectorAll('.col-toggle-btn');
+  for(var i=0;i<bs.length;i++){
+    (function(b){ b.addEventListener('click',function(){
+      var k=b.getAttribute('data-k'); store[k]=!store[k];
+      b.classList.toggle('active',store[k]); after();
+    }); })(bs[i]);
   }
+}
+function buildColMenus(){
+  buildToggleList('rcog-cols',REPO_COL_DEFS,repoCols,function(){ renderRepoTable(); });
+  buildToggleList('acog-cols',ASSET_COL_DEFS,assetCols,function(){ renderAssetTable(); });
+  buildReportColMenu();
+}
+function buildReportColMenu(){
+  if(reportMode==='density') buildToggleList('repcog-cols',REP_DENS_DEFS,repDensCols,function(){ renderReportTable(); });
+  else buildToggleList('repcog-cols',REP_EOL_DEFS,repEolCols,function(){ renderReportTable(); });
+}
 
-  var cols = hasEOL ? 'cols-4' : 'cols-3';
-  var tid  = tab.id;
-  var eolCard = hasEOL ? (
-    '<div class="stat-card c-eol">'+
-    '<div class="stat-filter-badge" id="flt-badge-eol-'+tid+'">Filtered</div>'+
+// ══════════ SCOPED DATA ══════════
+function scopedAssets(){
+  if(!ownerScope) return D.assets;
+  var o=null;
+  for(var i=0;i<D.owners.length;i++) if(D.owners[i].owner===ownerScope){ o=D.owners[i]; break; }
+  if(!o) return D.assets;
+  var rs={}; o.repos.forEach(function(r){ rs[r]=true; });
+  return D.assets.filter(function(a){ return rs[a.repo]; });
+}
+function repoAggregates(assets){
+  var m={};
+  assets.forEach(function(a){
+    if(!m[a.repo]) m[a.repo]={ repo:a.repo, owner:(ownerScope||D.repoOwnerMap[a.repo]||''), assets:0, crit:0, eol:0 };
+    m[a.repo].assets++; m[a.repo].crit+=a.critical; if(a.isEOL) m[a.repo].eol++;
+  });
+  return Object.keys(m).map(function(k){ var r=m[k];
+    return { repo:r.repo, owner:r.owner, assets:r.assets, crit:r.crit, eol:r.eol,
+             avg:r.assets?r.crit/r.assets:0, eolPct:r.assets?(r.eol/r.assets)*100:0 }; });
+}
+function applyMinAssets(list,min){ return (min&&min>0)?list.filter(function(r){return r.assets>=min;}):list; }
+function statsFor(assets){
+  var n=assets.length, crit=0, eol=0;
+  for(var i=0;i<n;i++){ crit+=assets[i].critical; if(assets[i].isEOL) eol++; }
+  var reps={}; assets.forEach(function(a){reps[a.repo]=true;});
+  return { n:n, crit:crit, eol:eol, avg:n?crit/n:0, eolPct:n?Math.round(eol/n*100):0, repoCount:Object.keys(reps).length };
+}
+function viewAssets(){
+  var b=scopedAssets();
+  return Object.keys(repoFilters).length ? b.filter(function(a){return repoFilters[a.repo];}) : b;
+}
+
+// ══════════ ORCHESTRATION ══════════
+function renderAll(){ renderStats(); renderRepoTable(); renderAssetTable(); renderReportView(); renderLinks(); updateExportNote(); }
+function setView(v){
+  currentView=v;
+  document.getElementById('view-asset').classList.toggle('active',v==='asset');
+  document.getElementById('view-report').classList.toggle('active',v==='report');
+  document.getElementById('vsw-asset').classList.toggle('active',v==='asset');
+  document.getElementById('vsw-report').classList.toggle('active',v==='report');
+  if(v==='report') renderReportView();
+  var m=document.getElementById('hd-cog-menu'), b=document.getElementById('hd-cog-btn');
+  if(m) m.classList.remove('open'); if(b) b.classList.remove('open');
+}
+function setReportMode(m){
+  reportMode=m;
+  document.getElementById('rmode-density').classList.toggle('active',m==='density');
+  document.getElementById('rmode-eol').classList.toggle('active',m==='eol');
+  buildReportColMenu();
+  renderReportView();
+}
+
+// ══════════ STAT CARDS ══════════
+function ownerBreakdownHTML(metric,base){
+  if(!Object.keys(breakdownSel).length||!D.hasOwners) return '';
+  var rows=[];
+  D.owners.forEach(function(o){
+    if(!breakdownSel[o.owner]) return;
+    var rs={}; o.repos.forEach(function(r){rs[r]=true;});
+    var s=statsFor(base.filter(function(a){return rs[a.repo];})), val;
+    if(metric==='assets') val=s.n;
+    else if(metric==='eol') val=s.eol+(s.eol>0?' ('+(s.n?Math.round(s.eol/s.n*100):0)+'%)':'');
+    else if(metric==='crit') val=s.crit;
+    else val=s.n?s.avg.toFixed(2):'0.00';
+    rows.push({ avg:s.avg, html:'<div class="owner-stat-row"><button class="owner-stat-btn" onclick="jumpToOwner(\''+esc(o.owner).replace(/'/g,"\\'")+'\')">'+esc(o.owner)+'</button><span class="owner-stat-val">'+val+'</span></div>' });
+  });
+  rows.sort(function(a,b){ return b.avg-a.avg; });
+  return '<div class="stat-owner-breakdown">'+rows.map(function(r){return r.html;}).join('')+'</div>';
+}
+function jumpToOwner(o){ ownerScope=o; repoFilters={}; buildScopeMenu(); renderAll(); updateExportNote(); }
+function renderStats(){
+  var view=viewAssets(), s=statsFor(view);
+  var filtered=Object.keys(repoFilters).length>0;
+  var fb='<div class="stat-filter-badge'+(filtered?' visible':'')+'">Filtered</div>';
+  var g=document.getElementById('asset-stats');
+  g.className='stats-grid '+(D.hasEOL?'cols-4':'cols-3');
+  var eolCard=D.hasEOL?('<div class="stat-card c-eol">'+fb+
     '<div class="stat-card-inner"><div class="stat-card-main">'+
     '<div class="stat-label">EOL Assets</div>'+
-    '<div class="stat-value-row"><span class="stat-value" id="stat-eol-'+tid+'">0</span><span class="stat-pct" id="stat-eolpct-'+tid+'"></span></div>'+
-    '<div class="stat-sub" id="stat-eolsub-'+tid+'">end-of-life OS detected</div>'+
-    '</div>'+ownerBreakdown('eol')+'</div></div>'
-  ) : '';
-
-  panelEl.innerHTML =
-    '<div class="stats-grid '+cols+'" id="stats-grid-'+tid+'">'+
-      '<div class="stat-card c-assets">'+
-        '<div class="stat-filter-badge" id="flt-badge-assets-'+tid+'">Filtered</div>'+
-        '<div class="stat-card-inner"><div class="stat-card-main">'+
-        '<div class="stat-label">Total Scanned Assets</div>'+
-        '<div class="stat-value" id="stat-assets-'+tid+'">0</div>'+
-        '<div class="stat-sub" id="stat-assetssub-'+tid+'"></div>'+
-        '</div>'+ownerBreakdown('assets')+'</div></div>'+
-      eolCard+
-      '<div class="stat-card c-crit">'+
-        '<div class="stat-filter-badge" id="flt-badge-crit-'+tid+'">Filtered</div>'+
-        '<div class="stat-card-inner"><div class="stat-card-main">'+
-        '<div class="stat-label">Critical Vulns</div>'+
-        '<div class="stat-value" id="stat-crit-'+tid+'">0</div>'+
-        '<div class="stat-sub">total across all assets</div>'+
-        '</div>'+ownerBreakdown('crit')+'</div></div>'+
-      '<div class="stat-card c-avg">'+
-        '<div class="stat-filter-badge" id="flt-badge-avg-'+tid+'">Filtered</div>'+
-        '<div class="stat-card-inner"><div class="stat-card-main">'+
-        '<div class="stat-label">Avg Critical / Asset</div>'+
-        '<div class="stat-value" id="stat-avg-'+tid+'">0.00</div>'+
-        '<div class="stat-sub">mean per scanned asset</div>'+
-        '</div>'+ownerBreakdown('avg')+'</div></div>'+
-    '</div>'+
-    '<div class="tables-grid">'+
-      '<div class="table-panel">'+
-        '<div class="table-panel-header"><h3>Repositories</h3><span id="repo-sort-label-'+tid+'">\u2193 avg crit/asset</span><div class="col-cog-wrap"><button class="col-cog-btn" id="rcog-cog-'+tid+'" title="Table options">&#9881;</button><div class="col-cog-dropdown" id="rcog-drop-'+tid+'"><div class="col-cog-title">Export</div><button class="col-csv-btn" id="rcog-csv-'+tid+'">&#8595; Export to CSV</button></div></div></div>'+
-        '<div class="search-row"><input class="search-input" id="repo-search-'+tid+'" placeholder="Filter repositories\u2026" autocomplete="off"><button class="search-clear" id="repo-search-clear-'+tid+'" title="Clear">\u2715</button></div>'+
-        '<div class="table-scroll"><table class="data-table" id="repo-table-'+tid+'"><thead><tr>'+
-          '<th class="sortable left" data-tab="'+tid+'" data-tbl="repo" data-key="repo"><span class="th-inner">Repository <span class="sort-arrow">\u2195</span></span></th>'+
-          (hasOwners?'<th class="sortable left" data-tab="'+tid+'" data-tbl="repo" data-key="owner"><span class="th-inner">Division <span class="sort-arrow">\u2195</span></span></th>':'')+
-          '<th class="sortable" data-tab="'+tid+'" data-tbl="repo" data-key="assets"><span class="th-inner">Assets <span class="sort-arrow">\u2195</span></span></th>'+
-          (hasEOL?'<th class="sortable" data-tab="'+tid+'" data-tbl="repo" data-key="eol"><span class="th-inner">EOL <span class="sort-arrow">\u2195</span></span></th>':'')+
-          '<th class="sortable" data-tab="'+tid+'" data-tbl="repo" data-key="crit"><span class="th-inner">Crits <span class="sort-arrow">\u2195</span></span></th>'+
-          '<th class="sortable sort-active" data-tab="'+tid+'" data-tbl="repo" data-key="avg"><span class="th-inner">Avg <span class="sort-arrow">\u2193</span></span></th>'+
-        '</tr></thead><tbody id="repo-tbody-'+tid+'"></tbody></table></div></div>'+
-      '<div class="table-panel">'+
-        '<div class="table-panel-header"><h3>Assets</h3><span id="asset-sort-label-'+tid+'">\u2193 critical count</span><div class="col-cog-wrap"><button class="col-cog-btn" id="ctog-cog-'+tid+'" title="Toggle columns">&#9881;</button><div class="col-cog-dropdown" id="ctog-drop-'+tid+'"><div class="col-cog-title">Columns</div><div class="col-toggle-list"><button class="col-toggle-btn t-crit active" id="ctog-crit-'+tid+'" data-tab="'+tid+'" data-col="crit">Criticals</button><button class="col-toggle-btn t-high" id="ctog-high-'+tid+'" data-tab="'+tid+'" data-col="high">High</button><button class="col-toggle-btn t-med" id="ctog-med-'+tid+'" data-tab="'+tid+'" data-col="med">Medium</button><button class="col-toggle-btn t-low" id="ctog-low-'+tid+'" data-tab="'+tid+'" data-col="low">Low</button><hr class="col-cog-sep"><div class="col-cog-title">Export</div><button class="col-csv-btn" id="acog-csv-'+tid+'">&#8595; Export to CSV</button></div></div></div></div>'+
-        '<div class="search-row"><input class="search-input" id="asset-search-'+tid+'" placeholder="Filter assets\u2026" autocomplete="off"><button class="search-clear" id="asset-search-clear-'+tid+'" title="Clear">\u2715</button></div>'+
-        '<div class="filter-chip-row" id="filter-chip-row-'+tid+'">'+
-          '<span class="filter-chip-label">Repo:</span>'+
-          '<span id="filter-chips-'+tid+'" style="display:inline-flex;gap:5px;flex-wrap:wrap;"></span>'+
-          '<button class="filter-clear-all" id="filter-clear-all-'+tid+'">Clear all</button>'+
-        '</div>'+
-
-        '<div class="table-scroll" id="asset-scroll-'+tid+'"><table class="data-table" id="asset-table-'+tid+'"><thead><tr>'+
-          '<th class="sortable left" data-tab="'+tid+'" data-tbl="asset" data-key="asset"><span class="th-inner">DNS Name <span class="sort-arrow">\u2195</span></span></th>'+
-          '<th class="sortable" data-tab="'+tid+'" data-tbl="asset" data-key="ip"><span class="th-inner">IP Address <span class="sort-arrow">\u2195</span></span></th>'+
-          '<th class="sortable" data-tab="'+tid+'" data-tbl="asset" data-key="repo"><span class="th-inner">Repo <span class="sort-arrow">\u2195</span></span></th>'+
-          '<th class="sortable sort-active" id="ath-crit-'+tid+'" data-tab="'+tid+'" data-tbl="asset" data-key="critical"><span class="th-inner">Crits <span class="sort-arrow">\u2193</span></span></th>'+
-          '<th class="sortable" id="ath-high-'+tid+'" data-tab="'+tid+'" data-tbl="asset" data-key="high" style="display:none"><span class="th-inner">High <span class="sort-arrow">\u2195</span></span></th>'+
-          '<th class="sortable" id="ath-med-'+tid+'" data-tab="'+tid+'" data-tbl="asset" data-key="med" style="display:none"><span class="th-inner">Med <span class="sort-arrow">\u2195</span></span></th>'+
-          '<th class="sortable" id="ath-low-'+tid+'" data-tab="'+tid+'" data-tbl="asset" data-key="low" style="display:none"><span class="th-inner">Low <span class="sort-arrow">\u2195</span></span></th>'+
-          (hasEOL?
-            '<th class="sortable" data-tab="'+tid+'" data-tbl="asset" data-key="isEOL"><span class="th-inner">EOL <span class="sort-arrow">\u2195</span></span></th>'+
-            '<th class="left"><span class="th-inner" style="float:none">EOL OS</span></th>':'')+'</tr></thead>'+
-          '<tbody id="asset-tbody-'+tid+'"></tbody></table></div></div>'+
-    '</div>';
-
-  // Sort header clicks
-  var ths = panelEl.querySelectorAll('th[data-key]');
-  for (var i=0; i<ths.length; i++) {
-    (function(th) {
-      th.addEventListener('click', function() {
-        var tabId=th.getAttribute('data-tab'), tbl=th.getAttribute('data-tbl'), key=th.getAttribute('data-key');
-        if (!tabId||!tbl||!key||!th.classList.contains('sortable')) return;
-        var ss = sortState[tabId][tbl];
-        var nd = { avg:1, critical:1, crit:1, eol:1, isEOL:1, assets:1, high:1, med:1, low:1 };
-        if (ss.key===key) ss.dir = ss.dir==='desc'?'asc':'desc';
-        else { ss.key=key; ss.dir=nd[key]?'desc':'asc'; }
-        renderTableBody(tabId, tbl); updateSortHeaders(tabId, tbl);
-      });
-    })(ths[i]);
-  }
-
-  // Search with debounce (150ms) to avoid hammering large datasets on every keystroke
-  var debouncedRepoSearch  = debounce(function(){ renderTableBody(tid,'repo'); }, 150);
-  var debouncedAssetSearch = debounce(function(){ renderTableBody(tid,'asset'); }, 150);
-  ['repo','asset'].forEach(function(tbl) {
-    var inp   = document.getElementById(tbl+'-search-'+tid);
-    var clear = document.getElementById(tbl+'-search-clear-'+tid);
-    var debouncedFn = tbl==='repo' ? debouncedRepoSearch : debouncedAssetSearch;
-    inp.addEventListener('input', function() {
-      filterState[tid][tbl+'Search'] = inp.value;
-      clear.classList.toggle('visible', !!inp.value);
-      debouncedFn();
-    });
-    clear.addEventListener('click', function() {
-      inp.value=''; filterState[tid][tbl+'Search']='';
-      clear.classList.remove('visible'); renderTableBody(tid, tbl); inp.focus();
-    });
-  });
-  document.getElementById('filter-clear-all-'+tid).addEventListener('click', function(){ clearAllRepoFilters(tid); });
-
-  // Wire cog open/close
-  var cogBtn  = document.getElementById('ctog-cog-'+tid);
-  var cogDrop = document.getElementById('ctog-drop-'+tid);
-  if (cogBtn && cogDrop) {
-    cogBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      var isOpen = cogDrop.classList.contains('open');
-      var allDrops = document.querySelectorAll('.col-cog-dropdown.open');
-      var allCogs  = document.querySelectorAll('.col-cog-btn.open');
-      for (var di=0; di<allDrops.length; di++) allDrops[di].classList.remove('open');
-      for (var ci=0; ci<allCogs.length;  ci++) allCogs[ci].classList.remove('open');
-      if (!isOpen) { cogDrop.classList.add('open'); cogBtn.classList.add('open'); }
-    });
-    cogDrop.addEventListener('click', function(e) { e.stopPropagation(); });
-  }
-
-  // Wire repo cog
-  var rCogBtn=document.getElementById('rcog-cog-'+tid);
-  var rCogDrop=document.getElementById('rcog-drop-'+tid);
-  if (rCogBtn && rCogDrop) {
-    rCogBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      var isOpen=rCogDrop.classList.contains('open');
-      var allD=document.querySelectorAll('.col-cog-dropdown.open');
-      var allC=document.querySelectorAll('.col-cog-btn.open');
-      for(var di=0;di<allD.length;di++) allD[di].classList.remove('open');
-      for(var ci=0;ci<allC.length;ci++) allC[ci].classList.remove('open');
-      if (!isOpen){rCogDrop.classList.add('open');rCogBtn.classList.add('open');}
-    });
-    rCogDrop.addEventListener('click', function(e){ e.stopPropagation(); });
-  }
-
-  // Wire CSV export buttons
-  (function(t){
-    var rCsv=document.getElementById('rcog-csv-'+t);
-    var aCsv=document.getElementById('acog-csv-'+t);
-    if (rCsv) rCsv.addEventListener('click', function(){ exportRepoTableCSV(t); });
-    if (aCsv) aCsv.addEventListener('click', function(){ exportAssetTableCSV(t); });
-  })(tid);
-
-  // Wire col-toggle buttons
-  var toggleBtns = panelEl.querySelectorAll('.col-toggle-btn');
-  for (var ti=0; ti<toggleBtns.length; ti++) {
-    (function(btn) {
-      btn.addEventListener('click', function() {
-        var tabId = btn.getAttribute('data-tab');
-        var colKey = btn.getAttribute('data-col');
-        var cv = getColVis(tabId);
-        cv[colKey] = !cv[colKey];
-        btn.classList.toggle('active', cv[colKey]);
-        applyColVisibility(tabId);
-        renderTableBody(tabId, 'asset');
-      });
-    })(toggleBtns[ti]);
-  }
-
-  // Attach virtual scroll listener to asset scroll container (once)
-  var scrollContainer = document.getElementById('asset-scroll-'+tid);
-  if (scrollContainer && !scrollContainer._vsListening) {
-    scrollContainer._vsListening = true;
-    scrollContainer.addEventListener('scroll', (function(tabId){ return function(){ vsMaybeUpdate(tabId); }; })(tid));
-  }
-
-  updateStatCards(tid);
-  renderTableBody(tid, 'repo');
-  renderTableBody(tid, 'asset');
+    '<div class="stat-value-row"><span class="stat-value">'+s.eol+'</span>'+(s.eol>0?'<span class="stat-pct">('+s.eolPct+'%)</span>':'')+'</div>'+
+    '<div class="stat-sub">end-of-life OS detected</div></div>'+
+    ownerBreakdownHTML('eol',view)+'</div></div>'):'';
+  g.innerHTML=
+    '<div class="stat-card c-assets">'+fb+'<div class="stat-card-inner"><div class="stat-card-main">'+
+      '<div class="stat-label">Total Scanned Assets</div><div class="stat-value">'+s.n+'</div>'+
+      '<div class="stat-sub">across '+s.repoCount+' repositor'+(s.repoCount===1?'y':'ies')+'</div></div>'+
+      ownerBreakdownHTML('assets',view)+'</div></div>'+
+    eolCard+
+    '<div class="stat-card c-crit">'+fb+'<div class="stat-card-inner"><div class="stat-card-main">'+
+      '<div class="stat-label">Critical Vulns</div><div class="stat-value">'+s.crit+'</div>'+
+      '<div class="stat-sub">total across all assets</div></div>'+
+      ownerBreakdownHTML('crit',view)+'</div></div>'+
+    '<div class="stat-card c-avg">'+fb+'<div class="stat-card-inner"><div class="stat-card-main">'+
+      '<div class="stat-label">Vulnerability Density</div><div class="stat-value">'+s.avg.toFixed(2)+'</div>'+
+      '<div class="stat-sub">mean critical vulnerabilities per asset</div></div>'+
+      ownerBreakdownHTML('avg',view)+'</div></div>';
 }
 
-// STAT CARD UPDATER
-function updateStatCards(tabId) {
-  var pd = panelData[tabId], fs = filterState[tabId];
-  if (!pd) return;
-  var fk = Object.keys(fs.repoFilters), isFiltered = fk.length > 0;
-  var assets = pd.assetData;
-  if (isFiltered) assets = assets.filter(function(a){ return fs.repoFilters[a.repo]; });
-  var totalAssets = assets.length;
-  var totalCrit   = assets.reduce(function(s,a){ return s+a.critical; }, 0);
-  var avgCrit     = totalAssets ? (totalCrit/totalAssets) : 0;
-  var totalEOL    = assets.filter(function(a){ return a.isEOL; }).length;
-  var eolPct      = totalAssets ? Math.round((totalEOL/totalAssets)*100) : 0;
-  var vr = {}; assets.forEach(function(a){ vr[a.repo]=true; });
-  var repoCount = Object.keys(vr).length;
-  function setText(id,val){ var el=document.getElementById(id); if(el) el.textContent=val; }
-  setText('stat-assets-'+tabId, totalAssets);
-  setText('stat-assetssub-'+tabId, 'across '+repoCount+' repositor'+(repoCount===1?'y':'ies'));
-  setText('stat-crit-'+tabId, totalCrit);
-  setText('stat-avg-'+tabId, avgCrit.toFixed(2));
-  if (pd.hasEOL) {
-    setText('stat-eol-'+tabId, totalEOL);
-    setText('stat-eolpct-'+tabId, eolPct>0?'('+eolPct+'%)':'');
-    setText('stat-eolsub-'+tabId, 'end-of-life OS detected');
-  }
-  var badges = ['assets','eol','crit','avg'];
-  for (var i=0; i<badges.length; i++) {
-    var b = document.getElementById('flt-badge-'+badges[i]+'-'+tabId);
-    if (b) b.classList.toggle('visible', isFiltered);
-  }
+// ══════════ REPOSITORIES TABLE ══════════
+function repoVisibleCols(){
+  var o=[{k:'repo',label:'Repository',left:true}];
+  if(repoCols.owner&&D.hasOwners) o.push({k:'owner',label:'Division',left:true});
+  if(repoCols.assets) o.push({k:'assets',label:'Assets'});
+  if(repoCols.eol&&D.hasEOL) o.push({k:'eol',label:'EOL'});
+  if(repoCols.eolPct&&D.hasEOL) o.push({k:'eolPct',label:'EOL %'});
+  if(repoCols.crit) o.push({k:'crit',label:'Crits'});
+  if(repoCols.avg) o.push({k:'avg',label:'Avg'});
+  return o;
 }
-
-// MULTI-REPO FILTER
-function toggleRepoFilter(tabId, repoName) {
-  var fs = filterState[tabId];
-  if (fs.repoFilters[repoName]) delete fs.repoFilters[repoName]; else fs.repoFilters[repoName]=true;
-  updateFilterChips(tabId); updateRepoRowHighlights(tabId);
-  renderTableBody(tabId,'asset'); updateStatCards(tabId); updateExportScopeNote();
-}
-function clearAllRepoFilters(tabId) {
-  filterState[tabId].repoFilters = {};
-  updateFilterChips(tabId); updateRepoRowHighlights(tabId);
-  renderTableBody(tabId,'asset'); updateStatCards(tabId); updateExportScopeNote();
-}
-function updateFilterChips(tabId) {
-  var fs = filterState[tabId];
-  var chipRow = document.getElementById('filter-chip-row-'+tabId);
-  var chipsEl = document.getElementById('filter-chips-'+tabId);
-  var names   = Object.keys(fs.repoFilters);
-  chipRow.classList.toggle('visible', names.length > 0);
-  if (!chipsEl) return;
-  chipsEl.innerHTML = names.map(function(name) {
-    return '<span class="filter-chip" data-repo="'+esc(name)+'"><span class="filter-chip-name">'+esc(name)+'</span><button class="filter-chip-x" title="Remove">\u2715</button></span>';
+function headHTML(cols,ss){
+  return cols.map(function(c){
+    var act=ss.key===c.k, ar=act?(ss.dir==='desc'?'\u2193':'\u2191'):'\u2195';
+    return '<th class="sortable'+(c.left?' left':'')+(act?' sort-active':'')+'" data-k="'+c.k+'"><span class="th-inner">'+c.label+' <span class="sort-arrow">'+ar+'</span></span></th>';
   }).join('');
-  var chips = chipsEl.querySelectorAll('.filter-chip');
-  for (var i=0; i<chips.length; i++) {
-    (function(chip) {
-      chip.querySelector('.filter-chip-x').addEventListener('click', function(){ toggleRepoFilter(tabId, chip.getAttribute('data-repo')); });
-    })(chips[i]);
+}
+function wireHead(thEl,ss,strKeys,after){
+  var ths=thEl.querySelectorAll('th');
+  for(var i=0;i<ths.length;i++){
+    (function(t){ t.addEventListener('click',function(){
+      var k=t.getAttribute('data-k');
+      if(ss.key===k) ss.dir=ss.dir==='desc'?'asc':'desc';
+      else { ss.key=k; ss.dir=strKeys.indexOf(k)!==-1?'asc':'desc'; }
+      after();
+    }); })(ths[i]);
   }
 }
-function updateRepoRowHighlights(tabId) {
-  var active = filterState[tabId].repoFilters;
-  var rows = document.querySelectorAll('#repo-tbody-'+tabId+' .repo-row');
-  for (var i=0; i<rows.length; i++) rows[i].classList.toggle('row-active', !!active[rows[i].getAttribute('data-repo')]);
-}
-
-// TABLE BODY RENDERING
-function renderTableBody(tabId, tbl) {
-  var pd = panelData[tabId], ss = sortState[tabId][tbl], fs = filterState[tabId];
-  var tbody  = document.getElementById(tbl+'-tbody-'+tabId);
-  var hasEOL = pd.hasEOL;
-
-  if (tbl === 'repo') {
-    var q    = fs.repoSearch.toLowerCase();
-    var data = pd.repoData.slice();
-    if (q) data = data.filter(function(r){ return r.repo.toLowerCase().indexOf(q)!==-1||(r.owner||'').toLowerCase().indexOf(q)!==-1; });
-    data.sort(makeSorter(ss.key, ss.dir));
-    var hasOwners = pd.hasOwners;
-    var baseRepoCols = hasOwners ? 5 : 4;
-    var colSpan = hasEOL ? baseRepoCols + 1 : baseRepoCols;
-    if (!data.length) { tbody.innerHTML='<tr><td colspan="'+colSpan+'" class="empty-state">No repositories match "'+esc(fs.repoSearch)+'"</td></tr>'; return; }
-    var maxAvg = 0.001; data.forEach(function(r){ if(r.avg>maxAvg) maxAvg=r.avg; });
-    tbody.innerHTML = data.map(function(r) {
-      var barW = Math.max(2, Math.round((r.avg/maxAvg)*70));
-      var nameHtml = q ? highlight(r.repo,q) : esc(r.repo);
-      var ownHtml  = q ? highlight(r.owner||'',q) : esc(r.owner||'');
-      var isActive = !!fs.repoFilters[r.repo];
-      var eolCol   = hasEOL ? '<td class="'+(r.eol>0?'eol-val':'assets-val')+'">'+r.eol+'</td>' : '';
-      return '<tr class="repo-row'+(isActive?' row-active':'')+'" data-repo="'+esc(r.repo)+'" data-tab="'+tabId+'">'+
-        '<td class="name-cell">'+nameHtml+'</td>'+
-        (hasOwners?'<td class="owner-cell left">'+ownHtml+'</td>':'')+
-        '<td class="assets-val">'+r.assets+'</td>'+
-        eolCol+
-        '<td class="crit-val">'+r.crit+'</td>'+
-        '<td><div class="bar-wrap"><div class="mini-bar" style="width:'+barW+'px"></div><span class="avg-val">'+r.avg.toFixed(2)+'</span></div></td>'+
-      '</tr>';
+function renderRepoTable(){
+  var cols=repoVisibleCols(), th=document.getElementById('repo-thead');
+  th.innerHTML=headHTML(cols,sortState.repo);
+  wireHead(th,sortState.repo,['repo','owner'],renderRepoTable);
+  var data=applyMinAssets(repoAggregates(scopedAssets()),minAssetsRepo);
+  var q=searches.repo.toLowerCase();
+  if(q) data=data.filter(function(r){return r.repo.toLowerCase().indexOf(q)!==-1||(r.owner||'').toLowerCase().indexOf(q)!==-1;});
+  data.sort(makeSorter(sortState.repo.key,sortState.repo.dir));
+  var tb=document.getElementById('repo-tbody');
+  if(!data.length){ tb.innerHTML='<tr><td colspan="'+cols.length+'" class="empty-state">No repositories match the current filters</td></tr>'; return; }
+  var mA=0.001,mP=0.001;
+  data.forEach(function(r){ if(r.avg>mA)mA=r.avg; if(r.eolPct>mP)mP=r.eolPct; });
+  tb.innerHTML=data.map(function(r){
+    var tds=cols.map(function(c){
+      if(c.k==='repo')   return '<td class="name-cell left">'+(q?highlight(r.repo,q):esc(r.repo))+'</td>';
+      if(c.k==='owner')  return '<td class="owner-cell left">'+(q?highlight(r.owner||'',q):esc(r.owner||''))+'</td>';
+      if(c.k==='assets') return '<td class="assets-val">'+r.assets+'</td>';
+      if(c.k==='eol')    return '<td class="'+(r.eol>0?'eol-val':'assets-val')+'">'+r.eol+'</td>';
+      if(c.k==='eolPct') return '<td><div class="bar-wrap"><div class="mini-bar eolbar" style="width:'+Math.max(2,Math.round(r.eolPct/mP*40))+'px"></div><span class="eolpct-val">'+r.eolPct.toFixed(0)+'%</span></div></td>';
+      if(c.k==='crit')   return '<td class="crit-val">'+r.crit+'</td>';
+      return '<td><div class="bar-wrap"><div class="mini-bar" style="width:'+Math.max(2,Math.round(r.avg/mA*50))+'px"></div><span class="avg-val">'+r.avg.toFixed(2)+'</span></div></td>';
     }).join('');
-    var rows = tbody.querySelectorAll('.repo-row');
-    for (var i=0; i<rows.length; i++) {
-      (function(row){ row.addEventListener('click', function(){ toggleRepoFilter(row.getAttribute('data-tab'), row.getAttribute('data-repo')); }); })(rows[i]);
-    }
-
-  } else {
-    // Asset table — build the filtered/sorted dataset, then hand off to virtual scroll
-    var q2   = fs.assetSearch.toLowerCase();
-    var data2 = pd.assetData.slice();
-    var fk    = Object.keys(fs.repoFilters);
-    if (fk.length > 0) data2 = data2.filter(function(a){ return fs.repoFilters[a.repo]; });
-    if (q2) data2 = data2.filter(function(a){
-      return (a.asset||'').toLowerCase().indexOf(q2)!==-1 ||
-             (a.ip||'').toLowerCase().indexOf(q2)!==-1 ||
-             (a.repo||'').toLowerCase().indexOf(q2)!==-1;
-    });
-    data2.sort(function(a,b) {
-      var av=a[ss.key], bv=b[ss.key];
-      if (typeof av==='boolean') { av=av?1:0; bv=bv?1:0; }
-      else if (typeof av==='string') { av=av.toLowerCase(); bv=bv.toLowerCase(); }
-      else { av=av||0; bv=bv||0; }
-      if (av<bv) return ss.dir==='asc'?-1:1;
-      if (av>bv) return ss.dir==='asc'?1:-1;
-      if (ss.key==='isEOL') return b.critical - a.critical;
-      return 0;
-    });
-
-    var cv2 = getColVis(tabId);
-    var vulnCols = (cv2.crit?1:0)+(cv2.high?1:0)+(cv2.med?1:0)+(cv2.low?1:0);
-    var colSpan2 = 3 + vulnCols + (hasEOL ? 2 : 0);
-    if (!data2.length) {
-      var fd = fk.length>0 ? 'in selected repos' : '', sd = q2 ? 'matching "'+esc(q2)+'"' : '';
-      tbody.innerHTML = '<tr><td colspan="'+colSpan2+'" class="empty-state">No assets '+fd+' '+sd+'</td></tr>';
-      // Clear any stale virtual scroll state for this tab
-      if (vsState[tabId]) { vsState[tabId].data = []; }
-      return;
-    }
-
-    var maxCrit = 0.001;
-    data2.forEach(function(a){ if(a.critical > maxCrit) maxCrit = a.critical; });
-
-    var makeRow = (function(q2, hasEOL, maxCrit, cv) {
-      return function(a) {
-        var barW     = Math.max(2, Math.round((a.critical/maxCrit)*55));
-        var nameHtml = q2 ? highlight(a.asset||'',q2) : esc(a.asset||'');
-        var ipHtml   = q2 ? highlight(a.ip||'',q2)    : esc(a.ip||'');
-        var repoHtml = q2 ? highlight(a.repo||'',q2)  : esc(a.repo||'');
-        var eolCols  = hasEOL ?
-          '<td>'+(a.isEOL?'<span class="eol-badge">EOL</span>':'')+'</td>'+
-          '<td class="eol-plugin-cell" title="'+esc(a.eolPlugin)+'">'+esc(a.eolPlugin)+'</td>' : '';
-        return '<tr>'+
-          '<td class="name-cell" title="'+esc(a.asset)+'">'+nameHtml+'</td>'+
-          '<td class="ip-cell" title="'+esc(a.ip)+'">'+ipHtml+'</td>'+
-          '<td><span class="repo-tag">'+repoHtml+'</span></td>'+
-          (cv.crit?'<td><div class="bar-wrap"><div class="mini-bar" style="width:'+barW+'px"></div><span class="crit-val">'+a.critical+'</span></div></td>':'')+
-          (cv.high?'<td class="high-val">'+a.high+'</td>':'')+
-          (cv.med ?'<td class="med-val" >'+a.medium+'</td>':'')+
-          (cv.low ?'<td class="low-val" >'+a.low+'</td>':'')+
-          eolCols+'</tr>';
-      };
-    })(q2, hasEOL, maxCrit, getColVis(tabId));
-
-    // Hand off to virtual scroll — it resets scroll position and renders the first window
-    vsSet(tabId, data2, makeRow, colSpan2);
+    return '<tr class="repo-row'+(repoFilters[r.repo]?' row-active':'')+'" data-repo="'+esc(r.repo)+'">'+tds+'</tr>';
+  }).join('');
+  var rows=tb.querySelectorAll('.repo-row');
+  for(var j=0;j<rows.length;j++){
+    (function(row){ row.addEventListener('click',function(){ toggleRepoFilter(row.getAttribute('data-repo')); }); })(rows[j]);
   }
 }
 
-// VIRTUAL SCROLL
-function vsSet(tabId, data, makeRow, colSpan) {
-  if (!vsState[tabId]) vsState[tabId] = {};
-  vsState[tabId].data     = data;
-  vsState[tabId].makeRow  = makeRow;
-  vsState[tabId].colSpan  = colSpan;
-  vsState[tabId].measuredH = vsState[tabId].measuredH || 0;
-
-  var container = document.getElementById('asset-scroll-'+tabId);
-  if (container) container.scrollTop = 0;
-  vsRender(tabId, 0);
+// ══════════ ASSETS TABLE ══════════
+function assetVisibleCols(){
+  var o=[{k:'asset',label:'DNS Name',left:true}];
+  if(assetCols.ip) o.push({k:'ip',label:'IP Address'});
+  if(assetCols.repo) o.push({k:'repo',label:'Repo'});
+  if(assetCols.crit) o.push({k:'critical',label:'Crits'});
+  if(assetCols.high) o.push({k:'high',label:'High'});
+  if(assetCols.med) o.push({k:'medium',label:'Med'});
+  if(assetCols.low) o.push({k:'low',label:'Low'});
+  if(assetCols.eol&&D.hasEOL) o.push({k:'isEOL',label:'EOL'});
+  if(assetCols.eolOS&&D.hasEOL) o.push({k:'eolPlugin',label:'EOL OS',left:true});
+  return o;
 }
-
-function vsMaybeUpdate(tabId) {
-  var vs = vsState[tabId];
-  if (!vs || !vs.data || !vs.data.length) return;
-  var container = document.getElementById('asset-scroll-'+tabId);
-  if (!container) return;
-  var rowH = vs.measuredH || VS_ROW_H;
-  var scrollTop = container.scrollTop;
-  var newStart = Math.max(0, Math.floor(scrollTop / rowH) - VS_OVERSCAN);
-  // Only re-render when the user has scrolled far enough to need new rows
-  if (Math.abs(newStart - (vs.lastStart || 0)) >= Math.floor(VS_OVERSCAN / 2)) {
-    vsRender(tabId, newStart);
-  }
-}
-
-function vsRender(tabId, startHint) {
-  var vs = vsState[tabId];
-  if (!vs || !vs.data) return;
-  var tbody     = document.getElementById('asset-tbody-'+tabId);
-  var container = document.getElementById('asset-scroll-'+tabId);
-  if (!tbody) return;
-
-  var total  = vs.data.length;
-  var rowH   = vs.measuredH || VS_ROW_H;
-  var contH  = (container && container.clientHeight) || 400;
-  var visRows = Math.ceil(contH / rowH);
-  var winSize = visRows + VS_OVERSCAN * 2;
-
-  var startIdx = Math.max(0, Math.min(startHint || 0, Math.max(0, total - winSize)));
-  var endIdx   = Math.min(total, startIdx + winSize);
-  vs.lastStart = startIdx;
-
-  var topH = startIdx * rowH;
-  var botH = Math.max(0, (total - endIdx) * rowH);
-
-  var html = '';
-  if (topH > 0) html += '<tr class="vs-spacer"><td colspan="'+vs.colSpan+'" style="height:'+topH+'px"></td></tr>';
-  for (var i = startIdx; i < endIdx; i++) html += vs.makeRow(vs.data[i]);
-  if (botH > 0) html += '<tr class="vs-spacer"><td colspan="'+vs.colSpan+'" style="height:'+botH+'px"></td></tr>';
-
-  tbody.innerHTML = html;
-
-  // Calibrate row height from the first real row after rendering
-  if (!vs.measuredH || vs.measuredH === VS_ROW_H) {
-    var firstReal = tbody.querySelector('tr:not(.vs-spacer)');
-    if (firstReal) {
-      var h = firstReal.getBoundingClientRect().height;
-      if (h > 0) vs.measuredH = h;
-    }
-  }
-}
-
-// APPLY COLUMN VISIBILITY — show/hide vuln columns in asset table header
-function applyColVisibility(tabId) {
-  var cv = getColVis(tabId);
-  var cols = ['crit','high','med','low'];
-  for (var i=0; i<cols.length; i++) {
-    var th = document.getElementById('ath-'+cols[i]+'-'+tabId);
-    if (th) th.style.display = cv[cols[i]] ? '' : 'none';
-  }
-}
-
-// CSV EXPORT
-function tableToCSV(headers, rows) {
-  function cell(v) {
-    var s = String(v===null||v===undefined?'':v);
-    return (s.indexOf(',')!==-1||s.indexOf('"')!==-1||s.indexOf('\n')!==-1) ? '"'+s.replace(/"/g,'""')+'"' : s;
-  }
-  var lines = [headers.map(cell).join(',')];
-  for (var i=0;i<rows.length;i++) lines.push(rows[i].map(cell).join(','));
-  return lines.join('\r\n');
-}
-function downloadCSV(csv, filename) {
-  var blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href=url; a.download=filename;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a); URL.revokeObjectURL(url);
-}
-function exportRepoTableCSV(tabId) {
-  var pd=panelData[tabId]; if (!pd) return;
-  var fs=filterState[tabId], ss=sortState[tabId].repo;
-  var q=fs.repoSearch.toLowerCase();
-  var data=pd.repoData.slice();
-  if (q) data=data.filter(function(r){return r.repo.toLowerCase().indexOf(q)!==-1||(r.owner||'').toLowerCase().indexOf(q)!==-1;});
-  data.sort(makeSorter(ss.key,ss.dir));
-  var headers=['Repository'];
-  if (pd.hasOwners) headers.push('Division');
-  headers.push('Assets');
-  if (pd.hasEOL) headers.push('EOL');
-  headers.push('Criticals','Avg Crit/Asset');
-  var rows=data.map(function(r){
-    var row=[r.repo];
-    if (pd.hasOwners) row.push(r.owner||'');
-    row.push(r.assets);
-    if (pd.hasEOL) row.push(r.eol);
-    row.push(r.crit, r.avg.toFixed(2));
-    return row;
-  });
-  downloadCSV(tableToCSV(headers,rows),'repositories-'+tabId+'.csv');
-}
-function exportAssetTableCSV(tabId) {
-  var pd=panelData[tabId]; if (!pd) return;
-  var fs=filterState[tabId], ss=sortState[tabId].asset, cv=getColVis(tabId);
-  var q2=fs.assetSearch.toLowerCase(), fk=Object.keys(fs.repoFilters);
-  var data=pd.assetData.slice();
-  if (fk.length>0) data=data.filter(function(a){return fs.repoFilters[a.repo];});
-  if (q2) data=data.filter(function(a){
-    return (a.asset||'').toLowerCase().indexOf(q2)!==-1||
-           (a.ip||'').toLowerCase().indexOf(q2)!==-1||
-           (a.repo||'').toLowerCase().indexOf(q2)!==-1;
-  });
-  data.sort(function(a,b){
+function assetSortCmp(ss){
+  return function(a,b){
     var av=a[ss.key],bv=b[ss.key];
-    if (typeof av==='boolean'){av=av?1:0;bv=bv?1:0;}
-    else if (typeof av==='string'){av=av.toLowerCase();bv=bv.toLowerCase();}
-    else{av=av||0;bv=bv||0;}
-    if (av<bv) return ss.dir==='asc'?-1:1;
-    if (av>bv) return ss.dir==='asc'?1:-1;
-    if (ss.key==='isEOL') return b.critical-a.critical;
-    return 0;
-  });
-  var headers=['DNS Name','IP Address','Repository'];
-  if (cv.crit) headers.push('Criticals');
-  if (cv.high) headers.push('High');
-  if (cv.med)  headers.push('Medium');
-  if (cv.low)  headers.push('Low');
-  if (pd.hasEOL) headers.push('EOL','EOL OS');
-  var rows=data.map(function(a){
-    var row=[a.dns||a.asset||'',a.ip||'',a.repo||''];
-    if (cv.crit) row.push(a.critical);
-    if (cv.high) row.push(a.high);
-    if (cv.med)  row.push(a.medium);
-    if (cv.low)  row.push(a.low);
-    if (pd.hasEOL) row.push(a.isEOL?'Yes':'',a.eolPlugin||'');
-    return row;
-  });
-  downloadCSV(tableToCSV(headers,rows),'assets-'+tabId+'.csv');
-}
-
-// HELPERS
-function makeSorter(key, dir) {
-  return function(a,b) {
-    var av = typeof a[key]==='string' ? a[key].toLowerCase() : (a[key]||0);
-    var bv = typeof b[key]==='string' ? b[key].toLowerCase() : (b[key]||0);
-    if (av<bv) return dir==='asc'?-1:1;
-    if (av>bv) return dir==='asc'?1:-1;
+    if(typeof av==='boolean'){av=av?1:0;bv=bv?1:0;}
+    else if(typeof av==='string'){av=av.toLowerCase();bv=(bv||'').toLowerCase();}
+    else {av=av||0;bv=bv||0;}
+    if(av<bv) return ss.dir==='asc'?-1:1;
+    if(av>bv) return ss.dir==='asc'?1:-1;
+    if(ss.key==='isEOL') return b.critical-a.critical;
     return 0;
   };
 }
-function updateSortHeaders(tabId, tbl) {
-  var ss = sortState[tabId][tbl];
-  var table = document.getElementById(tbl+'-table-'+tabId);
-  var ths = table.querySelectorAll('th.sortable');
-  for (var i=0; i<ths.length; i++) {
-    var active = ths[i].getAttribute('data-key')===ss.key;
-    ths[i].classList.toggle('sort-active', active);
-    var arr = ths[i].querySelector('.sort-arrow');
-    if (arr) arr.textContent = active ? (ss.dir==='desc'?'\u2193':'\u2191') : '\u2195';
+function renderAssetTable(){
+  var cols=assetVisibleCols(), th=document.getElementById('asset-thead');
+  th.innerHTML=headHTML(cols,sortState.asset);
+  wireHead(th,sortState.asset,['asset','ip','repo','eolPlugin'],renderAssetTable);
+  var data=viewAssets().slice();
+  var q=searches.asset.toLowerCase();
+  if(q) data=data.filter(function(a){
+    return (a.asset||'').toLowerCase().indexOf(q)!==-1||(a.ip||'').toLowerCase().indexOf(q)!==-1||(a.repo||'').toLowerCase().indexOf(q)!==-1; });
+  data.sort(assetSortCmp(sortState.asset));
+  var tb=document.getElementById('asset-tbody');
+  if(!data.length){ tb.innerHTML='<tr><td colspan="'+cols.length+'" class="empty-state">No assets match the current filters</td></tr>'; vs.data=[]; return; }
+  var mC=0.001; data.forEach(function(a){ if(a.critical>mC) mC=a.critical; });
+  var makeRow=function(a){
+    return '<tr>'+cols.map(function(c){
+      if(c.k==='asset')    return '<td class="name-cell left" title="'+esc(a.asset)+'">'+(q?highlight(a.asset||'',q):esc(a.asset||''))+'</td>';
+      if(c.k==='ip')       return '<td class="ip-cell" title="'+esc(a.ip)+'">'+(q?highlight(a.ip||'',q):esc(a.ip||''))+'</td>';
+      if(c.k==='repo')     return '<td><span class="repo-tag">'+(q?highlight(a.repo||'',q):esc(a.repo||''))+'</span></td>';
+      if(c.k==='critical') return '<td><div class="bar-wrap"><div class="mini-bar" style="width:'+Math.max(2,Math.round(a.critical/mC*45))+'px"></div><span class="crit-val">'+a.critical+'</span></div></td>';
+      if(c.k==='high')     return '<td class="high-val">'+a.high+'</td>';
+      if(c.k==='medium')   return '<td class="med-val">'+a.medium+'</td>';
+      if(c.k==='low')      return '<td class="low-val">'+a.low+'</td>';
+      if(c.k==='isEOL')    return '<td>'+(a.isEOL?'<span class="eol-badge">EOL</span>':'')+'</td>';
+      return '<td class="eol-plugin-cell left" title="'+esc(a.eolPlugin)+'">'+esc(a.eolPlugin)+'</td>';
+    }).join('')+'</tr>';
+  };
+  vsSet(data,makeRow,cols.length);
+}
+
+// ══════════ VIRTUAL SCROLL ══════════
+function vsSet(d,mr,cs){ vs.data=d; vs.makeRow=mr; vs.colSpan=cs;
+  var c=document.getElementById('asset-scroll'); if(c) c.scrollTop=0; vsRender(0); }
+function vsMaybeUpdate(){
+  if(!vs.data||!vs.data.length) return;
+  var c=document.getElementById('asset-scroll'); if(!c) return;
+  var h=vs.measuredH||VS_ROW_H;
+  var ns=Math.max(0,Math.floor(c.scrollTop/h)-VS_OVERSCAN);
+  if(Math.abs(ns-(vs.lastStart||0))>=Math.floor(VS_OVERSCAN/2)) vsRender(ns);
+}
+function vsRender(sh){
+  var tb=document.getElementById('asset-tbody'); if(!tb||!vs.data) return;
+  var c=document.getElementById('asset-scroll');
+  var total=vs.data.length, h=vs.measuredH||VS_ROW_H;
+  var win=Math.ceil(((c&&c.clientHeight)||400)/h)+VS_OVERSCAN*2;
+  var s=Math.max(0,Math.min(sh||0,Math.max(0,total-win))), e=Math.min(total,s+win);
+  vs.lastStart=s;
+  var top=s*h, bot=Math.max(0,(total-e)*h), html='';
+  if(top>0) html+='<tr class="vs-spacer"><td colspan="'+vs.colSpan+'" style="height:'+top+'px"></td></tr>';
+  for(var i=s;i<e;i++) html+=vs.makeRow(vs.data[i]);
+  if(bot>0) html+='<tr class="vs-spacer"><td colspan="'+vs.colSpan+'" style="height:'+bot+'px"></td></tr>';
+  tb.innerHTML=html;
+  if(!vs.measuredH||vs.measuredH===VS_ROW_H){
+    var fr=tb.querySelector('tr:not(.vs-spacer)');
+    if(fr){ var hh=fr.getBoundingClientRect().height; if(hh>0) vs.measuredH=hh; }
   }
-  var labels = { repo:'repository', owner:'division', assets:'assets', crit:'criticals', avg:'avg crit/asset', asset:'dns name', critical:'criticals', ip:'ip address', isEOL:'eol', eol:'eol', high:'high', med:'medium', low:'low' };
-  var lbl = document.getElementById(tbl+'-sort-label-'+tabId);
-  if (lbl) lbl.textContent = (labels[ss.key]||ss.key) + ' ' + (ss.dir==='desc'?'\u2193':'\u2191');
-}
-function highlight(text, query) {
-  if (!query||!text) return esc(text);
-  var idx = text.toLowerCase().indexOf(query.toLowerCase());
-  if (idx===-1) return esc(text);
-  return esc(text.slice(0,idx))+'<mark>'+esc(text.slice(idx,idx+query.length))+'</mark>'+esc(text.slice(idx+query.length));
-}
-function esc(s) {
-  return String(s===null||s===undefined?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// EXPORT
-function exportDashboard() {
-  var raw = window._dashboardRaw; if (!raw) return;
-  var activeBtn   = document.querySelector('.tab-btn.active');
-  var activeTabId = activeBtn ? activeBtn.getAttribute('data-tab-id') : 'all';
-  var isAll = activeTabId === 'all';
-  var fs = filterState[activeTabId] || {};
-  var repoFilterKeys = Object.keys(fs.repoFilters||{});
-  var hasRepoFilter  = repoFilterKeys.length > 0;
-  var exportRaw;
-  if (isAll && !hasRepoFilter) {
-    exportRaw = raw;
+// ══════════ REPO FILTERS ══════════
+function toggleRepoFilter(n){
+  if(repoFilters[n]) delete repoFilters[n]; else repoFilters[n]=true;
+  updateChips(); renderRepoTable(); renderAssetTable(); renderStats(); renderReportView(); updateExportNote();
+}
+function clearAllRepoFilters(){
+  repoFilters={};
+  updateChips(); renderRepoTable(); renderAssetTable(); renderStats(); renderReportView(); updateExportNote();
+}
+function updateChips(){
+  var row=document.getElementById('filter-chip-row'), el=document.getElementById('filter-chips');
+  var names=Object.keys(repoFilters);
+  row.classList.toggle('visible',names.length>0);
+  el.innerHTML=names.map(function(n){
+    return '<span class="filter-chip" data-repo="'+esc(n)+'"><span class="filter-chip-name">'+esc(n)+'</span><button class="filter-chip-x">&#10005;</button></span>';
+  }).join('');
+  var cs=el.querySelectorAll('.filter-chip');
+  for(var i=0;i<cs.length;i++){
+    (function(c){ c.querySelector('.filter-chip-x').addEventListener('click',function(){ toggleRepoFilter(c.getAttribute('data-repo')); }); })(cs[i]);
+  }
+}
+
+// ══════════ REPORT VIEW ══════════
+function donutSVG(pct){
+  var r=42, c=2*Math.PI*r, on=c*(pct/100);
+  return '<svg viewBox="0 0 104 104" preserveAspectRatio="xMidYMid meet">'+
+    '<circle cx="52" cy="52" r="'+r+'" fill="none" stroke="var(--donut-track)" stroke-width="14"/>'+
+    '<circle cx="52" cy="52" r="'+r+'" fill="none" stroke="var(--eol)" stroke-width="14" stroke-linecap="round" '+
+    'stroke-dasharray="'+on.toFixed(2)+' '+(c-on).toFixed(2)+'"/></svg>';
+}
+function renderReportView(){
+  var s=statsFor(viewAssets());
+  var eolCard=D.hasEOL?
+    ('<div class="rep-card c-eol"><div class="rep-label">EOL Assets</div>'+
+     '<div class="rep-eol-inner">'+
+     '<div class="donut-wrap">'+donutSVG(s.eolPct)+'<div class="donut-label">'+s.eolPct+'%<span class="dl-sub">End of Life</span></div></div>'+
+     '</div></div>'):
+    ('<div class="rep-card c-eol"><div class="rep-label">EOL Assets</div>'+
+     '<div class="rep-value" style="color:var(--muted);font-size:1.7rem">n/a</div>'+
+     '<div class="rep-sub">no EOL data loaded</div></div>');
+  document.getElementById('report-stats').innerHTML=
+    '<div class="rep-card c-assets"><div class="rep-label">Total Scanned Assets</div>'+
+      '<div class="rep-value">'+s.n+'</div><div class="rep-sub">across '+s.repoCount+' repositor'+(s.repoCount===1?'y':'ies')+'</div></div>'+
+    eolCard+
+    '<div class="rep-card c-crit"><div class="rep-label">Critical Vulnerabilities</div>'+
+      '<div class="rep-value">'+s.crit+'</div><div class="rep-sub">total across all assets</div></div>'+
+    '<div class="rep-card c-avg"><div class="rep-label">Vulnerability Density</div>'+
+      '<div class="rep-value">'+s.avg.toFixed(2)+'</div>'+
+      '<div class="rep-sub">mean critical vulnerabilities per asset</div></div>';
+  document.getElementById('rmode-eol').style.display=D.hasEOL?'':'none';
+  if(!D.hasEOL&&reportMode==='eol') reportMode='density';
+  renderReportTable();
+}
+function reportVisibleCols(){
+  var o=[{k:'rank',label:'#',left:true},{k:'repo',label:'Repository',left:true}];
+  if(reportMode==='density'){
+    if(repDensCols.assets) o.push({k:'assets',label:'Assets'});
+    if(repDensCols.crit)   o.push({k:'crit',label:'Criticals'});
+    if(repDensCols.avg)    o.push({k:'avg',label:'Avg Crit/Asset'});
   } else {
-    // Determine the exact owner being exported (null when on the All tab)
-    var ownerLabel = isAll ? null : activeTabId.replace(/^owner_/,'');
+    if(repEolCols.assets) o.push({k:'assets',label:'Assets'});
+    if(repEolCols.eol)    o.push({k:'eol',label:'EOL Assets'});
+    if(repEolCols.eolPct) o.push({k:'eolPct',label:'EOL %'});
+  }
+  return o;
+}
+function renderReportTable(){
+  var dens=reportMode==='density';
+  document.getElementById('rmode-density').classList.toggle('active',dens);
+  document.getElementById('rmode-eol').classList.toggle('active',!dens);
 
-    // Start from the set of assets actually shown on the active tab. Each tab's
-    // asset list already correctly reflects owner membership, so this is the
-    // authoritative source — never re-derive ownership from repoOwnerMap, which
-    // can map a shared repo to a different owner (the cause of issue 1).
-    var tabAssets = null;
-    for (var ti=0; ti<globalTabs.length; ti++) {
-      if (globalTabs[ti].id === activeTabId) { tabAssets = globalTabs[ti].assets; break; }
-    }
-    if (!tabAssets) tabAssets = raw.assets;
+  var cols=reportVisibleCols();
+  document.getElementById('rep-thead').innerHTML=cols.map(function(c){
+    return '<th'+(c.left?' class="left"':'')+'>'+c.label+'</th>'; }).join('');
 
-    // Apply any active repo filter on top of the tab's assets
-    var filteredAssets = tabAssets;
-    if (hasRepoFilter) {
-      filteredAssets = filteredAssets.filter(function(a){ return fs.repoFilters[a.repo]; });
-    }
+  var data=applyMinAssets(repoAggregates(viewAssets()),minAssetsReport);
+  var q=searches.rep.toLowerCase();
+  if(q) data=data.filter(function(r){ return r.repo.toLowerCase().indexOf(q)!==-1; });
+  data.sort(dens ? function(a,b){ return b.avg-a.avg; }
+                 : function(a,b){ return (b.eolPct-a.eolPct)||(b.eol-a.eol); });
+  var tb=document.getElementById('rep-tbody');
+  if(!data.length){ tb.innerHTML='<tr><td colspan="'+cols.length+'" class="empty-state">No repositories match the current filters</td></tr>'; return; }
+  var mA=0.001; data.forEach(function(r){ if(r.avg>mA) mA=r.avg; });
+  tb.innerHTML=data.map(function(r,i){
+    return '<tr>'+cols.map(function(c){
+      if(c.k==='rank')   return '<td class="rank-cell left">'+(i+1)+'</td>';
+      if(c.k==='repo')   return '<td class="name-cell left">'+(q?highlight(r.repo,q):esc(r.repo))+'</td>';
+      if(c.k==='assets') return '<td class="assets-val">'+r.assets+'</td>';
+      if(c.k==='crit')   return '<td class="crit-val">'+r.crit+'</td>';
+      if(c.k==='eol')    return '<td class="'+(r.eol>0?'eol-val':'assets-val')+'">'+r.eol+'</td>';
+      if(c.k==='eolPct') return '<td><div class="bar-wrap"><div class="mini-bar eolbar" style="width:'+Math.max(3,Math.round(r.eolPct/100*70))+'px"></div><span class="eolpct-val">'+r.eolPct.toFixed(0)+'%</span></div></td>';
+      return '<td><div class="bar-wrap"><div class="mini-bar" style="width:'+Math.max(3,Math.round(r.avg/mA*70))+'px"></div><span class="avg-val">'+r.avg.toFixed(2)+'</span></div></td>';
+    }).join('')+'</tr>';
+  }).join('');
+}
 
-    // The repos genuinely present in the exported asset set
-    var repoSet = {};
-    filteredAssets.forEach(function(a){ repoSet[a.repo] = true; });
+// ══════════ HELPERS ══════════
+function makeSorter(key,dir){
+  return function(a,b){
+    var av=typeof a[key]==='string'?a[key].toLowerCase():(a[key]||0);
+    var bv=typeof b[key]==='string'?b[key].toLowerCase():(b[key]||0);
+    if(av<bv) return dir==='asc'?-1:1;
+    if(av>bv) return dir==='asc'?1:-1;
+    return 0;
+  };
+}
 
-    // Build owners and repoOwnerMap scoped strictly to this export.
-    // For an owner tab: every repo maps to THAT owner (matching what is displayed).
-    // For the All tab with a repo filter: preserve each repo's true owner.
-    var filteredOwners = [];
-    var filteredRepoOwnerMap = {};
-    if (!isAll) {
-      var ownerRepos = [];
-      Object.keys(repoSet).forEach(function(r){
-        ownerRepos.push(r);
-        filteredRepoOwnerMap[r] = ownerLabel;
-      });
-      if (ownerRepos.length) filteredOwners.push({ owner:ownerLabel, repos:ownerRepos });
+// ══════════ CSV EXPORT ══════════
+function tableToCSV(h,rows){
+  function cell(v){ var s=String(v===null||v===undefined?'':v);
+    return (s.indexOf(',')!==-1||s.indexOf('"')!==-1||s.indexOf('\n')!==-1)?'"'+s.replace(/"/g,'""')+'"':s; }
+  var l=[h.map(cell).join(',')];
+  for(var i=0;i<rows.length;i++) l.push(rows[i].map(cell).join(','));
+  return l.join('\r\n');
+}
+function downloadCSV(csv,fn){
+  var b=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var u=URL.createObjectURL(b), a=document.createElement('a');
+  a.href=u; a.download=fn; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(u);
+}
+function scopeTag(){ return ownerScope?ownerScope.replace(/[^A-Za-z0-9_-]/g,'_'):'all'; }
+function exportRepoCSV(){
+  var cols=repoVisibleCols(), data=applyMinAssets(repoAggregates(scopedAssets()),minAssetsRepo);
+  var q=searches.repo.toLowerCase();
+  if(q) data=data.filter(function(r){return r.repo.toLowerCase().indexOf(q)!==-1||(r.owner||'').toLowerCase().indexOf(q)!==-1;});
+  data.sort(makeSorter(sortState.repo.key,sortState.repo.dir));
+  var h=cols.map(function(c){ return c.k==='eolPct'?'EOL %':c.k==='avg'?'Avg Crit/Asset':c.k==='crit'?'Criticals':c.k==='eol'?'EOL Count':c.label; });
+  var rows=data.map(function(r){ return cols.map(function(c){
+    if(c.k==='avg') return r.avg.toFixed(2);
+    if(c.k==='eolPct') return r.eolPct.toFixed(0)+'%';
+    return r[c.k]; }); });
+  downloadCSV(tableToCSV(h,rows),'repositories-'+scopeTag()+'.csv');
+}
+function exportAssetCSV(){
+  var cols=assetVisibleCols(), data=viewAssets().slice();
+  var q=searches.asset.toLowerCase();
+  if(q) data=data.filter(function(a){
+    return (a.asset||'').toLowerCase().indexOf(q)!==-1||(a.ip||'').toLowerCase().indexOf(q)!==-1||(a.repo||'').toLowerCase().indexOf(q)!==-1; });
+  data.sort(assetSortCmp(sortState.asset));
+  var h=cols.map(function(c){ return c.k==='critical'?'Criticals':c.k==='medium'?'Medium':c.k==='isEOL'?'EOL':c.k==='eolPlugin'?'EOL OS':c.label; });
+  var rows=data.map(function(a){ return cols.map(function(c){
+    if(c.k==='isEOL') return a.isEOL?'Yes':'';
+    if(c.k==='asset') return a.dns||a.asset||'';
+    return a[c.k]; }); });
+  downloadCSV(tableToCSV(h,rows),'assets-'+scopeTag()+'.csv');
+}
+function exportReportCSV(){
+  var dens=reportMode==='density', cols=reportVisibleCols();
+  var data=applyMinAssets(repoAggregates(viewAssets()),minAssetsReport);
+  var q=searches.rep.toLowerCase();
+  if(q) data=data.filter(function(r){ return r.repo.toLowerCase().indexOf(q)!==-1; });
+  data.sort(dens?function(a,b){return b.avg-a.avg;}:function(a,b){return (b.eolPct-a.eolPct)||(b.eol-a.eol);});
+  var h=cols.map(function(c){ return c.k==='rank'?'Rank':c.label; });
+  var rows=data.map(function(r,i){ return cols.map(function(c){
+    if(c.k==='rank') return i+1;
+    if(c.k==='avg') return r.avg.toFixed(2);
+    if(c.k==='eolPct') return r.eolPct.toFixed(0)+'%';
+    return r[c.k]; }); });
+  downloadCSV(tableToCSV(h,rows),'report-'+(dens?'density':'eol')+'-'+scopeTag()+'.csv');
+}
+
+// ══════════ SNAPSHOT EXPORT ══════════
+function updateExportNote(){
+  var n=document.getElementById('export-scope-note'); if(!n) return;
+  var rc=Object.keys(repoFilters).length, msg='';
+  if(ownerScope&&rc) msg='\u26a0 Snapshot will contain only '+ownerScope+' + '+rc+' repo filter'+(rc>1?'s':'')+'.';
+  else if(ownerScope) msg='\u26a0 Snapshot will contain only '+ownerScope+' data.';
+  else if(rc) msg='\u26a0 Snapshot will contain only '+rc+' filtered repositor'+(rc>1?'ies':'y')+'.';
+  n.textContent=msg; n.style.display=msg?'block':'none';
+}
+function exportDashboard(){
+  var raw=window._raw; if(!raw) return;
+  var rc=Object.keys(repoFilters), out;
+  if(!ownerScope&&!rc.length){
+    out={ assets:raw.assets, owners:raw.owners, hasEOL:raw.hasEOL, eolKeys:raw.eolKeys,
+          eolPlugins:raw.eolPlugins, repoOwnerMap:raw.repoOwnerMap, reportDate:raw.reportDate,
+          title:raw.title, classification:raw.classification, links:raw.links };
+  } else {
+    var base=scopedAssets();
+    var filtered=rc.length?base.filter(function(a){return repoFilters[a.repo];}):base;
+    var repoSet={}; filtered.forEach(function(a){ repoSet[a.repo]=true; });
+    var owners=[], rom={};
+    if(ownerScope){
+      var rl=Object.keys(repoSet);
+      rl.forEach(function(r){ rom[r]=ownerScope; });
+      if(rl.length) owners.push({owner:ownerScope,repos:rl});
     } else {
       raw.owners.forEach(function(o){
-        var keep = o.repos.filter(function(r){ return repoSet[r]; });
-        if (keep.length) filteredOwners.push({ owner:o.owner, repos:keep });
+        var keep=o.repos.filter(function(r){return repoSet[r];});
+        if(keep.length) owners.push({owner:o.owner,repos:keep});
       });
-      Object.keys(raw.repoOwnerMap||{}).forEach(function(r){
-        if (repoSet[r]) filteredRepoOwnerMap[r] = raw.repoOwnerMap[r];
+      Object.keys(raw.repoOwnerMap||{}).forEach(function(r){ if(repoSet[r]) rom[r]=raw.repoOwnerMap[r]; });
+    }
+    var ek=[], ep=[];
+    if(raw.hasEOL){
+      var seen={};
+      filtered.forEach(function(a){
+        if(!a.isEOL) return;
+        var dk=(a.dns||'').toLowerCase(), ik=(a.ip||'').toLowerCase();
+        if(dk&&!seen[dk]){ seen[dk]=true; ek.push(dk); if(a.eolPlugin) ep.push([dk,a.eolPlugin]); }
+        if(ik&&!seen[ik]){ seen[ik]=true; ek.push(ik); if(a.eolPlugin) ep.push([ik,a.eolPlugin]); }
       });
     }
-
-    // Scope EOL data to ONLY the exported assets, so no other owner's hostnames
-    // or IP addresses leak into the snapshot file (the cause of issue 2).
-    var exportEolKeys = [];
-    var exportEolPlugins = [];
-    if (raw.hasEOL) {
-      var seenKeys = {};
-      filteredAssets.forEach(function(a){
-        var dk = (a.dns||'').toLowerCase(), ik = (a.ip||'').toLowerCase();
-        if (a.isEOL) {
-          if (dk && !seenKeys[dk]) { seenKeys[dk]=true; exportEolKeys.push(dk); if (a.eolPlugin) exportEolPlugins.push([dk, a.eolPlugin]); }
-          if (ik && !seenKeys[ik]) { seenKeys[ik]=true; exportEolKeys.push(ik); if (a.eolPlugin) exportEolPlugins.push([ik, a.eolPlugin]); }
-        }
-      });
-    }
-
-    exportRaw = { assets:filteredAssets, owners:filteredOwners, hasEOL:raw.hasEOL,
-      eolKeys:exportEolKeys, eolPlugins:exportEolPlugins,
-      repoOwnerMap:filteredRepoOwnerMap, reportDate:raw.reportDate||'' };
+    out={ assets:filtered, owners:owners, hasEOL:raw.hasEOL, eolKeys:ek, eolPlugins:ep,
+          repoOwnerMap:rom, reportDate:raw.reportDate||'', title:raw.title||'',
+          classification:raw.classification||'', links:raw.links||[] };
   }
-  var label    = isAll ? 'snapshot' : activeTabId.replace(/^owner_/,'');
-  var filename = 'vulnstat-'+label+'.html';
-  var injection = '<script>window.__BAKED__ = '+JSON.stringify(exportRaw)+';<\/script>';
-  var exported  = _pageTemplate.replace('</head>', injection+'\n</head>');
-  var blob = new Blob([exported], { type:'text/html' });
-  var url  = URL.createObjectURL(blob);
-  var a    = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('Exported: '+filename);
-}
-function showToast(msg) {
-  var t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(function(){ t.classList.remove('show'); }, 3000);
+  out.cfg = currentConfig();
+
+  var payload = SCRIPT_OPEN + 'window.' + BAKED_KEY + ' = ' + JSON.stringify(out) + ';' + SCRIPT_CLOSE;
+  var html = _pageTemplate.replace(BAKED_STRIP, '');
+  html = html.replace('</head>', payload + '\n</head>');
+  var b=new Blob([html],{type:'text/html'});
+  var u=URL.createObjectURL(b), a=document.createElement('a');
+  a.href=u; a.download='vulnstat-'+scopeTag()+'.html';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(u);
 }
 
-// RESET
-function resetDashboard() {
+// ══════════ RESET ══════════
+function resetDashboard(){
   state.assetsText=null; state.reposText=null; state.eolText=null;
-  ['slot-assets','slot-repos','slot-eol'].forEach(function(id){ document.getElementById(id).classList.remove('loaded'); });
-  ['status-assets','status-repos','status-eol'].forEach(function(id){ document.getElementById(id).style.display='none'; });
-  document.getElementById('btn-load').disabled = true;
-  document.getElementById('upload-error').style.display = 'none';
-  document.getElementById('dashboard-screen').style.display = 'none';
-  document.getElementById('upload-screen').style.display = 'flex';
-  document.getElementById('tabs-bar').innerHTML = '';
-  document.getElementById('tab-panels').innerHTML = '';
-  document.querySelectorAll('.upload-slot input[type=file]').forEach(function(i){ i.value=''; });
-  globalTabs=[]; globalOwners=[]; pendingPanels={};
-  [panelData, sortState, filterState, vsState, colVis].forEach(function(o){ Object.keys(o).forEach(function(k){ delete o[k]; }); });
-  var note = document.getElementById('export-scope-note');
-  if (note) { note.textContent=''; note.classList.remove('visible'); }
+  ['slot-assets','slot-repos','slot-eol'].forEach(function(i){ document.getElementById(i).classList.remove('loaded'); });
+  ['status-assets','status-repos','status-eol'].forEach(function(i){ document.getElementById(i).style.display='none'; });
+  document.getElementById('btn-load').disabled=true;
+  document.getElementById('upload-error').style.display='none';
+  document.getElementById('dashboard-screen').style.display='none';
+  document.getElementById('upload-screen').style.display='flex';
+  document.getElementById('classification-banner').classList.remove('visible');
+  var fis=document.querySelectorAll('.upload-slot input[type=file]');
+  for(var i=0;i<fis.length;i++) fis[i].value='';
+  ownerScope=null; breakdownSel={}; repoFilters={};
+  searches={repo:'',asset:'',rep:''};
+  vs={data:[],makeRow:null,colSpan:1,measuredH:0,lastStart:0};
+  currentView='asset'; reportMode='density'; minAssetsRepo=0; minAssetsReport=0;
+  setView('asset');
 }
 
-// AUTO-LOAD BAKED DATA
-if (window.__BAKED__) buildDashboard(window.__BAKED__);
+// ══════════ WIRING ══════════
+wireDrop('hd-scope-btn','hd-scope-menu');
+wireDrop('hd-cog-btn','hd-cog-menu');
+wireDrop('rcog-btn','rcog-menu');
+wireDrop('acog-btn','acog-menu');
+wireDrop('repcog-btn','repcog-menu');
+
+(function(){
+  function wireSearch(inputId, key, rerender){
+    var inp=document.getElementById(inputId), clr=document.getElementById(inputId+'-clr');
+    if(!inp) return;
+    var deb=debounce(rerender,150);
+    inp.addEventListener('input',function(){ searches[key]=inp.value; clr.classList.toggle('visible',!!inp.value); deb(); });
+    clr.addEventListener('click',function(){ inp.value=''; searches[key]=''; clr.classList.remove('visible'); rerender(); inp.focus(); });
+  }
+  wireSearch('repo-search','repo',function(){ renderRepoTable(); });
+  wireSearch('asset-search','asset',function(){ renderAssetTable(); });
+  wireSearch('rep-search','rep',function(){ renderReportTable(); });
+
+  function wireMin(id, setter, rerender){
+    var el=document.getElementById(id); if(!el) return;
+    var deb=debounce(rerender,200);
+    el.addEventListener('input',function(){
+      var v=parseInt(el.value,10); setter(isNaN(v)||v<0?0:v); deb();
+    });
+  }
+  wireMin('rcog-min',   function(v){ minAssetsRepo=v; },   function(){ renderRepoTable(); });
+  wireMin('repcog-min', function(v){ minAssetsReport=v; }, function(){ renderReportTable(); });
+  var sc=document.getElementById('asset-scroll');
+  if(sc) sc.addEventListener('scroll',function(){ vsMaybeUpdate(); });
+})();
+
+(function(){ try{
+  var n=new Date(), mm=('0'+(n.getMonth()+1)).slice(-2), dd=('0'+n.getDate()).slice(-2);
+  var di=document.getElementById('report-date'); if(di) di.value=n.getFullYear()+'-'+mm+'-'+dd;
+}catch(e){} })();
+
+addLinkRow();
+syncThemeLabel();
+if (window[BAKED_KEY]) buildDashboard(window[BAKED_KEY]);
 </script>
 </body>
 </html>
