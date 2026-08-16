@@ -372,6 +372,30 @@
   .report-table .crit-val, .report-table .avg-val, .report-table .assets-val,
   .report-table .eol-val, .report-table .eolpct-val { font-size:1.06rem; font-weight:400; }
   .report-table .mini-bar { height:5px; border-radius:3px; }
+
+  /* ── ENVIRONMENT SETUP BLOCKS ── */
+  .env-section-head { display:flex; align-items:baseline; gap:10px; margin:0 0 10px; text-align:left; }
+  .env-section-head h4 { font-family:var(--font-ui); font-weight:700; font-size:0.9rem; color:var(--txt-head); }
+  .env-section-head span { font-size:0.72rem; color:var(--muted); }
+  .env-block { border:1px solid var(--border2); border-radius:var(--radius); padding:14px; margin-bottom:13px; background:var(--panel); text-align:left; }
+  .env-block-head { display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+  .env-name { flex:1; min-width:170px; background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); color:var(--txt); font-family:var(--font-mono); font-size:0.8rem; padding:8px 11px; outline:none; }
+  .env-name:focus { border-color:var(--accent); }
+  .env-type-switch { display:flex; border:1px solid var(--border2); border-radius:var(--radius); overflow:hidden; flex-shrink:0; }
+  .env-type-switch button { background:none; border:none; color:var(--muted); font-family:var(--font-mono); font-size:0.72rem; padding:8px 14px; cursor:pointer; }
+  .env-type-switch button:hover { color:var(--txt); }
+  .env-type-switch button.active { background:var(--accent); color:#fff; }
+  .env-remove { background:none; border:1px solid var(--border2); border-radius:var(--radius); color:var(--muted); cursor:pointer; padding:7px 11px; font-family:var(--font-mono); font-size:0.72rem; flex-shrink:0; }
+  .env-remove:hover { color:var(--crit); border-color:var(--crit); }
+  .env-slots { margin-bottom:0; }
+  .env-slots.one { grid-template-columns:1fr; }
+  .env-slots.two { grid-template-columns:1fr 1fr; }
+  @media (max-width:560px) { .env-slots.two { grid-template-columns:1fr; } }
+  .env-add-row { text-align:left; margin-bottom:22px; }
+  .universal-slot-wrap { margin-bottom:22px; }
+  .universal-slot-wrap .upload-slots { grid-template-columns:1fr; margin-bottom:0; }
+  /* ── COMPONENTS PANEL (RHACS) ── */
+  #components-panel { margin-top:18px; }
 </style>
 </head>
 <body>
@@ -382,7 +406,7 @@
 <div id="upload-screen">
   <div class="upload-card">
     <h2>Set Up Your Dashboard</h2>
-    <p>Assets CSV is required. Repositories and EOL CSVs are optional.<br>All files are processed in your browser &mdash; nothing is uploaded.</p>
+    <p>Add an environment for each scan tool export you want on the dashboard.<br>All files are processed in your browser &mdash; nothing is uploaded.</p>
 
     <div class="setup-grid">
       <div class="setup-field">
@@ -397,25 +421,21 @@
       </div>
     </div>
 
-    <div class="upload-slots">
-      <div class="upload-slot" id="slot-assets" ondragover="dragOver(event,'slot-assets')" ondragleave="dragLeave(event,'slot-assets')" ondrop="dropFile(event,'assets')">
-        <input type="file" accept=".csv" onchange="loadFile(this,'assets')">
-        <div class="slot-icon">&#128196;</div><div class="slot-label">Assets.csv</div>
-        <div class="slot-hint">Click or drag &amp; drop</div><div class="slot-status" id="status-assets">&#10003; Loaded</div>
-      </div>
-      <div class="upload-slot optional" id="slot-repos" ondragover="dragOver(event,'slot-repos')" ondragleave="dragLeave(event,'slot-repos')" ondrop="dropFile(event,'repos')">
-        <input type="file" accept=".csv" onchange="loadFile(this,'repos')">
-        <div class="slot-icon">&#128203;</div><div class="slot-optional-badge">Optional</div>
-        <div class="slot-label">Repositories.csv</div>
-        <div class="slot-hint">Click or drag &amp; drop</div><div class="slot-status" id="status-repos">&#10003; Loaded</div>
-      </div>
-      <div class="upload-slot optional" id="slot-eol" ondragover="dragOver(event,'slot-eol')" ondragleave="dragLeave(event,'slot-eol')" ondrop="dropFile(event,'eol')">
-        <input type="file" accept=".csv" onchange="loadFile(this,'eol')">
-        <div class="slot-icon">&#9888;</div><div class="slot-optional-badge">Optional</div>
-        <div class="slot-label">EOL.csv</div><div class="slot-hint">Click or drag &amp; drop</div>
-        <div class="slot-status" id="status-eol">&#10003; Loaded</div>
+    <div class="universal-slot-wrap">
+      <div class="env-section-head"><h4>Ownership</h4><span>Optional &mdash; one Repositories.csv maps repositories (Tenable) or namespaces (RHACS) to Divisions, shared across every environment</span></div>
+      <div class="upload-slots">
+        <div class="upload-slot optional" id="slot-repos" ondragover="dragOver(event,'slot-repos')" ondragleave="dragLeave(event,'slot-repos')" ondrop="dropFile(event,'repos')">
+          <input type="file" accept=".csv" onchange="loadFile(this,'repos')">
+          <div class="slot-icon">&#128203;</div><div class="slot-optional-badge">Optional &mdash; Universal</div>
+          <div class="slot-label">Repositories.csv</div>
+          <div class="slot-hint">Click or drag &amp; drop</div><div class="slot-status" id="status-repos">&#10003; Loaded</div>
+        </div>
       </div>
     </div>
+
+    <div class="env-section-head"><h4>Environments</h4><span>Each becomes a tab in the Environment dropdown &mdash; name it, pick a scan type, then upload its file(s)</span></div>
+    <div id="env-blocks"></div>
+    <div class="env-add-row"><button class="link-add" onclick="addEnvBlock()">+ Add environment</button></div>
 
     <div class="links-setup">
       <div class="links-setup-head">
@@ -446,6 +466,12 @@
       <div class="dash-date" id="dash-date"></div>
     </div>
     <div class="header-right">
+      <div class="hdrop" id="hd-env-wrap" style="display:none">
+        <button class="hdrop-btn" id="hd-env-btn">
+          <span class="cap">Environment</span><span class="val" id="hd-env-val">&mdash;</span><span class="caret">&#9662;</span>
+        </button>
+        <div class="hdrop-menu" id="hd-env-menu"></div>
+      </div>
       <div class="hdrop" id="hd-scope-wrap">
         <button class="hdrop-btn" id="hd-scope-btn">
           <span class="cap">Division</span><span class="val" id="hd-scope-val">All</span><span class="caret">&#9662;</span>
@@ -483,7 +509,7 @@
     <div class="tables-grid">
       <div class="table-panel">
         <div class="table-panel-header">
-          <h3>Repositories</h3>
+          <h3 id="repo-panel-title">Repositories</h3>
           <div class="hdr-search">
             <input id="repo-search" placeholder="Search" autocomplete="off">
             <button class="clr" id="repo-search-clr" title="Clear">&#10005;</button>
@@ -494,7 +520,7 @@
               <div class="col-cog-title">Columns</div>
               <div class="col-toggle-list" id="rcog-cols"></div>
               <hr class="col-cog-sep">
-              <div class="col-cog-title">Min assets per repo</div>
+              <div class="col-cog-title" id="rcog-min-title">Min assets per repo</div>
               <div class="cog-num-row"><input type="number" min="0" step="1" value="0" class="cog-num" id="rcog-min"></div>
               <hr class="col-cog-sep">
               <div class="col-cog-title">Export</div>
@@ -508,7 +534,7 @@
       </div>
       <div class="table-panel">
         <div class="table-panel-header">
-          <h3>Assets</h3>
+          <h3 id="asset-panel-title">Assets</h3>
           <div class="hdr-search">
             <input id="asset-search" placeholder="Search" autocomplete="off">
             <button class="clr" id="asset-search-clr" title="Clear">&#10005;</button>
@@ -525,13 +551,35 @@
           </div>
         </div>
         <div class="filter-chip-row" id="filter-chip-row">
-          <span class="filter-chip-label">Repo:</span>
+          <span class="filter-chip-label" id="filter-chip-label">Repo:</span>
           <span id="filter-chips" style="display:inline-flex;gap:5px;flex-wrap:wrap;"></span>
           <button class="filter-clear-all" onclick="clearAllRepoFilters()">Clear all</button>
         </div>
         <div class="table-scroll" id="asset-scroll">
           <table class="data-table" id="asset-table"><thead><tr id="asset-thead"></tr></thead><tbody id="asset-tbody"></tbody></table>
         </div>
+      </div>
+    </div>
+    <div class="table-panel" id="components-panel" style="display:none">
+      <div class="table-panel-header">
+        <h3>Components with Critical Findings</h3>
+        <div class="hdr-search">
+          <input id="comp-search" placeholder="Search" autocomplete="off">
+          <button class="clr" id="comp-search-clr" title="Clear">&#10005;</button>
+        </div>
+        <div class="col-cog-wrap">
+          <button class="col-cog-btn" id="ccog-btn" title="Table options">&#9881;</button>
+          <div class="col-cog-dropdown" id="ccog-menu">
+            <div class="col-cog-title">Columns</div>
+            <div class="col-toggle-list" id="ccog-cols"></div>
+            <hr class="col-cog-sep">
+            <div class="col-cog-title">Export</div>
+            <button class="col-csv-btn" onclick="exportCompCSV()">&#8595; Export to CSV</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table" id="comp-table"><thead><tr id="comp-thead"></tr></thead><tbody id="comp-tbody"></tbody></table>
       </div>
     </div>
     <div class="links-panel" id="links-panel">
@@ -556,7 +604,7 @@
           </button>
         </div>
         <div class="report-panel-header">
-          <h3 id="rep-title">Repositories</h3>
+          <h3 id="rep-title">Entities</h3>
           <div class="hdr-search">
             <input id="rep-search" placeholder="Search" autocomplete="off">
             <button class="clr" id="rep-search-clr" title="Clear">&#10005;</button>
@@ -567,7 +615,7 @@
               <div class="col-cog-title">Columns</div>
               <div class="col-toggle-list" id="repcog-cols"></div>
               <hr class="col-cog-sep">
-              <div class="col-cog-title">Min assets per repo</div>
+              <div class="col-cog-title">Min assets per entity</div>
               <div class="cog-num-row"><input type="number" min="0" step="1" value="0" class="cog-num" id="repcog-min"></div>
               <hr class="col-cog-sep">
               <div class="col-cog-title">Export</div>
@@ -628,23 +676,45 @@ var SCRIPT_CLOSE = '<' + '/' + 'script>';
 var BAKED_KEY    = '__' + 'BAKED' + '__';
 var BAKED_STRIP  = new RegExp('<script[^>]*>\\s*window\\.' + BAKED_KEY + '\\s*=[\\s\\S]*?<\\/script>\\s*', 'g');
 
-// ══════════ STATE ══════════
-var state = { assetsText:null, reposText:null, eolText:null };
-var D = { assets:[], owners:[], repoOwnerMap:{}, hasEOL:false, hasOwners:false,
+// ══════════ SETUP STATE ══════════
+// Each environment block on the setup screen: name, scan type, and its file texts.
+var _envSeq = 0;
+function newSetupEnv(){ _envSeq++; return { id:'env'+_envSeq, name:'', type:'tenable', files:{assets:null,eol:null,rhacs:null} }; }
+var setup = { reposText:null, envs:[ newSetupEnv() ] };
+
+// ══════════ DASHBOARD STATE ══════════
+var D = { envs:[], owners:[], repoOwnerMap:{}, hasOwners:false,
           reportDate:'', title:'', classification:'', links:[],
-          aggMode:false, aggStats:null, aggRepos:null, viewLock:null };
+          aggMode:false, aggStats:null, aggEntities:null, viewLock:null };
+var envScope=null;                       // id of the environment shown in Asset View
 var ownerScope=null, breakdownSel={}, repoFilters={};
-var searches={ repo:'', asset:'', rep:'' };
-var sortState={ repo:{key:'avg',dir:'desc'}, asset:{key:'critical',dir:'desc'} };
+var searches={ repo:'', asset:'', rep:'', comp:'' };
+var sortState={ repo:{key:'avg',dir:'desc'},  asset:{key:'critical',dir:'desc'},
+                ns:  {key:'avg',dir:'desc'},  img:  {key:'crit',dir:'desc'},
+                comp:{key:'critCves',dir:'desc'} };
 var currentView='asset', reportMode='density';
 var repoCols  = { owner:true, assets:true, eol:true, eolPct:true, crit:true, avg:true };
 var assetCols = { ip:true, repo:true, crit:true, high:false, med:false, low:false, eol:true, eolOS:true };
-var repDensCols = { owner:false, assets:true, crit:true, avg:true };
+var nsCols    = { owner:true, cluster:true, images:true, crit:true, avg:true };
+var imgCols   = { nsCount:true, crit:true, remediated:true };
+var compCols  = { images:true, critCves:true, resolved:true };
+var repDensCols = { env:true, owner:false, assets:true, crit:true, avg:true };
+var repEolCols  = { env:true, owner:false, assets:true, eol:true, eolPct:true };
 var minAssetsRepo=0, minAssetsReport=0;
 var showLinks={ asset:true, report:true };
-var repEolCols  = { owner:false, assets:true, eol:true, eolPct:true };
 var vs = { data:[], makeRow:null, colSpan:1, measuredH:0, lastStart:0 };
 var VS_ROW_H=37, VS_OVERSCAN=15;
+
+function activeEnv(){
+  for(var i=0;i<D.envs.length;i++) if(D.envs[i].id===envScope) return D.envs[i];
+  return D.envs[0]||null;
+}
+function isRhacs(){ var e=activeEnv(); return !!(e&&e.type==='rhacs'); }
+function anyEOL(){
+  if(D.aggMode) return !!(D.aggStats&&D.aggStats.eolKnown);
+  for(var i=0;i<D.envs.length;i++) if(D.envs[i].hasEOL) return true;
+  return false;
+}
 
 // ══════════ THEME ══════════
 function toggleTheme(){
@@ -685,6 +755,7 @@ function debounce(fn,ms){ var t; return function(){ var a=arguments,c=this; clea
 function esc(s){ return String(s===null||s===undefined?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function highlight(t,q){ if(!q||!t) return esc(t); var i=t.toLowerCase().indexOf(q.toLowerCase()); if(i===-1) return esc(t);
   return esc(t.slice(0,i))+'<mark>'+esc(t.slice(i,i+q.length))+'</mark>'+esc(t.slice(i+q.length)); }
+function setSize(o){ var n=0; for(var k in o) if(Object.prototype.hasOwnProperty.call(o,k)) n++; return n; }
 
 // ══════════ LINKS SETUP ══════════
 function addLinkRow(t,u,d,containerId){
@@ -717,7 +788,6 @@ function collectLinks(containerId){
 function safeURL(u){ return /^https?:\/\//i.test(u)?u:('https://'+String(u).replace(/^\/+/,'')); }
 function renderLinks(){
   var has = D.links && D.links.length;
-  // Asset View panel
   var p=document.getElementById('links-panel'), l=document.getElementById('links-list');
   if(p&&l){
     if(has && showLinks.asset){
@@ -729,7 +799,6 @@ function renderLinks(){
       }).join('');
     } else p.classList.remove('visible');
   }
-  // Report View strip
   var r=document.getElementById('report-links');
   if(r){
     if(has && showLinks.report){
@@ -782,7 +851,6 @@ function saveSettings(){
   D.classification = cl;
   D.reportDate = dt;
   D.links = collectLinks('edit-links-rows');
-  // keep the export payload in step so snapshots carry the edits
   if(window._raw){
     window._raw.title=D.title; window._raw.classification=D.classification;
     window._raw.reportDate=D.reportDate; window._raw.links=D.links;
@@ -796,45 +864,159 @@ function saveSettings(){
   closeSettings();
 }
 
-// ══════════ FILE LOADING ══════════
+// ══════════ SETUP SCREEN — ENVIRONMENT BLOCKS ══════════
+var ENV_TYPES = {
+  tenable: { label:'Tenable', slots:[
+    { key:'assets', label:'Assets.csv', optional:false, icon:'&#128196;' },
+    { key:'eol',    label:'EOL.csv',    optional:true,  icon:'&#9888;' } ] },
+  rhacs:   { label:'RHACS', slots:[
+    { key:'rhacs',  label:'RHACS.csv',  optional:false, icon:'&#128196;' } ] }
+};
+function findSetupEnv(id){ for(var i=0;i<setup.envs.length;i++) if(setup.envs[i].id===id) return setup.envs[i]; return null; }
+function addEnvBlock(){ setup.envs.push(newSetupEnv()); renderEnvBlocks(); }
+function removeEnvBlock(id){
+  setup.envs=setup.envs.filter(function(e){ return e.id!==id; });
+  if(!setup.envs.length) setup.envs.push(newSetupEnv());
+  renderEnvBlocks();
+}
+function setEnvType(id,type){
+  var e=findSetupEnv(id); if(!e||e.type===type) return;
+  e.type=type;
+  // Switching type clears that block's file state — the old files no longer apply.
+  e.files={assets:null,eol:null,rhacs:null};
+  renderEnvBlocks();
+}
+function renderEnvBlocks(){
+  var c=document.getElementById('env-blocks'); if(!c) return;
+  c.innerHTML='';
+  setup.envs.forEach(function(e,idx){
+    var t=ENV_TYPES[e.type];
+    var blk=document.createElement('div');
+    blk.className='env-block';
+    var head='<div class="env-block-head">'+
+      '<input class="env-name" placeholder="Environment name (e.g. Production VMs)" autocomplete="off">'+
+      '<div class="env-type-switch">'+
+        '<button data-t="tenable" class="'+(e.type==='tenable'?'active':'')+'">Tenable</button>'+
+        '<button data-t="rhacs" class="'+(e.type==='rhacs'?'active':'')+'">RHACS</button>'+
+      '</div>'+
+      (setup.envs.length>1?'<button class="env-remove" title="Remove environment">&#10005;</button>':'')+
+    '</div>';
+    var slots='<div class="upload-slots env-slots '+(t.slots.length===1?'one':'two')+'">';
+    t.slots.forEach(function(s){
+      var loaded=!!e.files[s.key];
+      slots+='<div class="upload-slot'+(s.optional?' optional':'')+(loaded?' loaded':'')+'" data-slot="'+s.key+'">'+
+        '<input type="file" accept=".csv">'+
+        '<div class="slot-icon">'+s.icon+'</div>'+
+        (s.optional?'<div class="slot-optional-badge">Optional</div>':'')+
+        '<div class="slot-label">'+s.label+'</div>'+
+        '<div class="slot-hint">Click or drag &amp; drop</div>'+
+        '<div class="slot-status"'+(loaded?' style="display:block"':'')+'>&#10003; Loaded</div>'+
+      '</div>';
+    });
+    slots+='</div>';
+    blk.innerHTML=head+slots;
+    c.appendChild(blk);
+
+    var nameInp=blk.querySelector('.env-name');
+    nameInp.value=e.name;
+    nameInp.addEventListener('input',function(){ e.name=nameInp.value; });
+    var tbs=blk.querySelectorAll('.env-type-switch button');
+    for(var i=0;i<tbs.length;i++){
+      (function(b){ b.addEventListener('click',function(){ setEnvType(e.id,b.getAttribute('data-t')); }); })(tbs[i]);
+    }
+    var rm=blk.querySelector('.env-remove');
+    if(rm) rm.addEventListener('click',function(){ removeEnvBlock(e.id); });
+    var sls=blk.querySelectorAll('.upload-slot');
+    for(var j=0;j<sls.length;j++){
+      (function(slot){
+        var key=slot.getAttribute('data-slot');
+        var inp=slot.querySelector('input[type=file]');
+        function take(file){
+          var r=new FileReader();
+          r.onload=function(ev){
+            e.files[key]=ev.target.result;
+            slot.classList.add('loaded');
+            slot.querySelector('.slot-status').style.display='block';
+            var st=slot.querySelector('.slot-status');
+            st.innerHTML='&#10003; '+esc(file.name);
+            syncGenerateBtn();
+            document.getElementById('upload-error').style.display='none';
+          };
+          r.readAsText(file);
+        }
+        inp.addEventListener('change',function(){ if(inp.files[0]) take(inp.files[0]); });
+        slot.addEventListener('dragover',function(ev){ ev.preventDefault(); slot.classList.add('drag-over'); });
+        slot.addEventListener('dragleave',function(){ slot.classList.remove('drag-over'); });
+        slot.addEventListener('drop',function(ev){ ev.preventDefault(); slot.classList.remove('drag-over');
+          var f=ev.dataTransfer.files[0]; if(f) take(f); });
+      })(sls[j]);
+    }
+  });
+  syncGenerateBtn();
+}
+function envRequiredMet(e){ return e.type==='rhacs' ? !!e.files.rhacs : !!e.files.assets; }
+function syncGenerateBtn(){
+  var ok=setup.envs.length>0;
+  for(var i=0;i<setup.envs.length;i++) if(!envRequiredMet(setup.envs[i])) ok=false;
+  var b=document.getElementById('btn-load'); if(b) b.disabled=!ok;
+}
+
+// Universal Repositories.csv slot (static in the HTML)
 function dragOver(e,id){ e.preventDefault(); document.getElementById(id).classList.add('drag-over'); }
 function dragLeave(e,id){ document.getElementById(id).classList.remove('drag-over'); }
 function dropFile(e,type){ e.preventDefault();
-  var ids={assets:'slot-assets',repos:'slot-repos',eol:'slot-eol'};
-  document.getElementById(ids[type]).classList.remove('drag-over');
-  var f=e.dataTransfer.files[0]; if(f) readFile(f,type); }
-function loadFile(inp,type){ if(inp.files[0]) readFile(inp.files[0],type); }
-function readFile(file,type){
+  document.getElementById('slot-repos').classList.remove('drag-over');
+  var f=e.dataTransfer.files[0]; if(f) readRepoFile(f); }
+function loadFile(inp,type){ if(inp.files[0]) readRepoFile(inp.files[0]); }
+function readRepoFile(file){
   var r=new FileReader();
   r.onload=function(e){
-    state[type==='assets'?'assetsText':type==='repos'?'reposText':'eolText']=e.target.result;
-    var si={assets:'slot-assets',repos:'slot-repos',eol:'slot-eol'};
-    var st={assets:'status-assets',repos:'status-repos',eol:'status-eol'};
-    document.getElementById(si[type]).classList.add('loaded');
-    document.getElementById(st[type]).style.display='block';
-    document.getElementById('btn-load').disabled=!state.assetsText;
+    setup.reposText=e.target.result;
+    document.getElementById('slot-repos').classList.add('loaded');
+    document.getElementById('status-repos').style.display='block';
     document.getElementById('upload-error').style.display='none';
   };
   r.readAsText(file);
 }
 
 // ══════════ CSV PARSING ══════════
+// Character-level parser: handles quoted fields containing commas, escaped
+// quotes ("") and embedded newlines (e.g. RHACS "March 14, 2026" dates).
+function parseCSVRows(text){
+  text=text.replace(/^\uFEFF/,'');
+  var rows=[],row=[],cur='',q=false,i=0,n=text.length;
+  while(i<n){
+    var c=text[i];
+    if(q){
+      if(c==='"'){
+        if(text[i+1]==='"'){ cur+='"'; i+=2; continue; }
+        q=false; i++; continue;
+      }
+      cur+=c; i++; continue;
+    }
+    if(c==='"'){ q=true; i++; continue; }
+    if(c===','){ row.push(cur); cur=''; i++; continue; }
+    if(c==='\n'||c==='\r'){
+      if(c==='\r'&&text[i+1]==='\n') i++;
+      row.push(cur); cur='';
+      if(row.length>1||row[0].trim()!=='') rows.push(row);
+      row=[]; i++; continue;
+    }
+    cur+=c; i++;
+  }
+  row.push(cur);
+  if(row.length>1||row[0].trim()!=='') rows.push(row);
+  return rows;
+}
 function parseCSV(text){
-  text=text.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-  var lines=text.split('\n').filter(function(l){return l.trim();});
-  if(!lines.length) return [];
-  var h=splitCSVRow(lines[0]).map(function(x){return x.trim();});
-  return lines.slice(1).filter(function(l){return l.trim();}).map(function(line){
-    var v=splitCSVRow(line),o={};
+  var rows=parseCSVRows(text);
+  if(!rows.length) return [];
+  var h=rows[0].map(function(x){return x.trim();});
+  return rows.slice(1).map(function(v){
+    var o={};
     h.forEach(function(k,i){ o[k]=(v[i]!==undefined?v[i]:'').trim(); });
     return o;
   });
-}
-function splitCSVRow(row){
-  var out=[],cur='',q=false;
-  for(var i=0;i<row.length;i++){ var c=row[i];
-    if(c==='"'){q=!q;} else if(c===','&&!q){out.push(cur);cur='';} else cur+=c; }
-  out.push(cur); return out;
 }
 function col(row){
   var al=Array.prototype.slice.call(arguments,1);
@@ -851,81 +1033,121 @@ function parseRepoList(s){
 }
 function parseOwner(s){ return s.trim().replace(/^\[/,'').replace(/\]$/,'').trim(); }
 
+// ══════════ ENVIRONMENT BUILDERS ══════════
+function buildTenableEnv(se){
+  var assets=[];
+  parseCSV(se.files.assets).forEach(function(r){
+    var dns=col(r,'DNS Name','dns name','hostname','asset');
+    var ip =col(r,'IP Address','ip address','ip');
+    if(!dns&&!ip) return;
+    var repo=col(r,'Repository','repo'); if(!repo) return;
+    assets.push({ asset:dns||ip, dns:dns, ip:ip, repo:repo,
+      critical:parseInt(col(r,'Crit.','Critical','crit'))||0,
+      high:parseInt(col(r,'High'))||0,
+      medium:parseInt(col(r,'Med.','Medium','med'))||0,
+      low:parseInt(col(r,'Low'))||0, isEOL:false, eolPlugin:'' });
+  });
+  if(!assets.length) throw new Error('No valid asset rows found in "'+se.name+'" (Tenable).');
+  var hasEOL=false;
+  if(se.files.eol){
+    var eolSet={}, eolPlug={};
+    parseCSV(se.files.eol).forEach(function(r){
+      var dns=col(r,'DNS Name','dns name','hostname');
+      var ip =col(r,'IP Address','ip address','ip');
+      var pl =col(r,'Plugin Name','plugin name','plugin');
+      [dns,ip].filter(Boolean).forEach(function(k){
+        var key=k.toLowerCase(); eolSet[key]=true;
+        if(pl&&!eolPlug[key]) eolPlug[key]=pl;
+      });
+    });
+    hasEOL=setSize(eolSet)>0;
+    assets.forEach(function(a){
+      var dk=(a.dns||'').toLowerCase(), ik=(a.ip||'').toLowerCase();
+      a.isEOL=!!(eolSet[dk]||eolSet[ik]);
+      a.eolPlugin=eolPlug[dk]||eolPlug[ik]||'';
+    });
+  }
+  return { id:se.id, name:se.name, type:'tenable', hasEOL:hasEOL, assets:assets };
+}
+function buildRhacsEnv(se){
+  // Index structures are the canonical data; every table/stat derives from
+  // them at render time so Division scoping recomputes naturally.
+  var nsCluster={}, imgNs={}, imgCves={}, compIndex={};
+  var rows=parseCSV(se.files.rhacs), used=0;
+  rows.forEach(function(r){
+    var img=col(r,'Image','image');
+    if(!img) return; // rows with no image can't be attributed — dropped
+    var ns=col(r,'Namespace','namespace'); if(!ns) return;
+    used++;
+    var cl=col(r,'Cluster','cluster');
+    if(nsCluster[ns]===undefined||nsCluster[ns]==='') nsCluster[ns]=cl||'';
+    if(!imgNs[img]) imgNs[img]={};
+    imgNs[img][ns]=1;
+    var sev=col(r,'Severity','severity').toUpperCase();
+    if(sev!=='CRITICAL') return;
+    var cve=col(r,'CVE','cve'); if(!cve) return;
+    if(!imgCves[img]) imgCves[img]={};
+    imgCves[img][cve]=1;
+    var comp=col(r,'Component','component')||'(unknown)';
+    if(!compIndex[comp]) compIndex[comp]={};
+    if(!compIndex[comp][img]) compIndex[comp][img]={cves:{},fix:{}};
+    compIndex[comp][img].cves[cve]=1;
+    var fixable=col(r,'Fixable','fixable').toUpperCase();
+    if(fixable==='YES'||fixable==='TRUE') compIndex[comp][img].fix[cve]=1;
+  });
+  if(!used) throw new Error('No valid rows found in "'+se.name+'" (RHACS) — every row needs an Image and Namespace.');
+  return { id:se.id, name:se.name, type:'rhacs', hasEOL:false,
+           nsCluster:nsCluster, imgNs:imgNs, imgCves:imgCves, compIndex:compIndex };
+}
+
 // ══════════ BUILD ══════════
 function buildDashboard(baked){
   try {
-    var assets,owners,eolSet,eolPlug,hasEOL,reportDate,title,classification,links;
+    var envs,owners,reportDate,title,classification,links;
     if(baked){
-      assets=baked.assets; owners=baked.owners;
-      eolSet={}; (baked.eolKeys||[]).forEach(function(k){eolSet[k]=true;});
-      eolPlug={}; (baked.eolPlugins||[]).forEach(function(p){eolPlug[p[0]]=p[1];});
-      hasEOL=baked.hasEOL||false; reportDate=baked.reportDate||'';
+      envs=baked.envs||[];
+      owners=baked.owners||[];
+      reportDate=baked.reportDate||'';
       title=baked.title||''; classification=baked.classification||''; links=baked.links||[];
-      // A view-scoped snapshot may carry precomputed aggregates instead of asset rows
       D.aggMode  = !!baked.agg;
       D.aggStats = baked.agg ? baked.agg.stats : null;
-      D.aggRepos = baked.agg ? baked.agg.repos : null;
+      D.aggEntities = baked.agg ? baked.agg.entities : null;
       D.viewLock = baked.viewLock || null;
     } else {
-      assets=[];
-      parseCSV(state.assetsText).forEach(function(r){
-        var dns=col(r,'DNS Name','dns name','hostname','asset');
-        var ip =col(r,'IP Address','ip address','ip');
-        if(!dns&&!ip) return;
-        var repo=col(r,'Repository','repo'); if(!repo) return;
-        assets.push({ asset:dns||ip, dns:dns, ip:ip, repo:repo,
-          critical:parseInt(col(r,'Crit.','Critical','crit'))||0,
-          high:parseInt(col(r,'High'))||0,
-          medium:parseInt(col(r,'Med.','Medium','med'))||0,
-          low:parseInt(col(r,'Low'))||0 });
+      envs=[];
+      setup.envs.forEach(function(se,i){
+        if(!se.name||!se.name.trim())
+          se.name=ENV_TYPES[se.type].label+(setup.envs.length>1?' '+(i+1):'');
+        envs.push(se.type==='rhacs'?buildRhacsEnv(se):buildTenableEnv(se));
       });
       owners=[];
-      if(state.reposText){
-        parseCSV(state.reposText).forEach(function(r){
+      if(setup.reposText){
+        parseCSV(setup.reposText).forEach(function(r){
           var o=parseOwner(col(r,'Owner','Group','Division','owner','group','division'));
-          var rp=parseRepoList(col(r,'Repository','Repositories','repo'));
+          var rp=parseRepoList(col(r,'Repository','Repositories','Namespace','Namespaces','repo'));
           if(o&&rp.length) owners.push({owner:o,repos:rp});
         });
-      }
-      eolSet={}; eolPlug={}; hasEOL=false;
-      if(state.eolText){
-        parseCSV(state.eolText).forEach(function(r){
-          var dns=col(r,'DNS Name','dns name','hostname');
-          var ip =col(r,'IP Address','ip address','ip');
-          var pl =col(r,'Plugin Name','plugin name','plugin');
-          [dns,ip].filter(Boolean).forEach(function(k){
-            var key=k.toLowerCase(); eolSet[key]=true;
-            if(pl&&!eolPlug[key]) eolPlug[key]=pl;
-          });
-        });
-        hasEOL=Object.keys(eolSet).length>0;
       }
       var di=document.getElementById('report-date');
       reportDate=di?di.value:'';
       title=(document.getElementById('setup-title')||{}).value||'';
       classification=(document.getElementById('setup-class')||{}).value||'';
       links=collectLinks();
-      D.aggMode=false; D.aggStats=null; D.aggRepos=null; D.viewLock=null;
+      D.aggMode=false; D.aggStats=null; D.aggEntities=null; D.viewLock=null;
     }
 
-    if(!assets.length && !D.aggMode) throw new Error('No valid asset rows found.');
-    assets.forEach(function(a){
-      var dk=(a.dns||'').toLowerCase(), ik=(a.ip||'').toLowerCase();
-      a.isEOL=!!(eolSet[dk]||eolSet[ik]);
-      a.eolPlugin=eolPlug[dk]||eolPlug[ik]||'';
-    });
+    if(!envs.length && !D.aggMode) throw new Error('No environments configured.');
 
     var rom={}; owners.forEach(function(o){ o.repos.forEach(function(r){ rom[r]=o.owner; }); });
-    D.assets=assets; D.owners=owners; D.repoOwnerMap=rom;
-    D.hasEOL=hasEOL; D.hasOwners=(owners.length>0 && !D.aggMode);
+    D.envs=envs; D.owners=owners; D.repoOwnerMap=rom;
+    D.hasOwners=(owners.length>0 && !D.aggMode);
     D.reportDate=reportDate; D.title=title||'Vulnerability Dashboard';
     D.classification=classification; D.links=links||[];
 
-    window._raw = { assets:assets, owners:owners, hasEOL:hasEOL,
-      eolKeys:Object.keys(eolSet),
-      eolPlugins:Object.keys(eolPlug).map(function(k){return [k,eolPlug[k]];}),
-      repoOwnerMap:rom, reportDate:reportDate, title:D.title,
-      classification:classification, links:D.links };
+    envScope = envs.length ? envs[0].id : null;
+
+    window._raw = { envs:envs, owners:owners, repoOwnerMap:rom, reportDate:reportDate,
+      title:D.title, classification:classification, links:D.links };
 
     document.getElementById('dash-title').textContent=D.title;
     setDateLabel(reportDate);
@@ -935,14 +1157,14 @@ function buildDashboard(baked){
 
     // defaults
     ownerScope=null; breakdownSel={}; repoFilters={};
-    searches={repo:'',asset:'',rep:''};
-    if(!hasEOL){ repoCols.eol=false; repoCols.eolPct=false; assetCols.eol=false; assetCols.eolOS=false; }
-    if(!D.hasOwners) repoCols.owner=false;
+    searches={repo:'',asset:'',rep:'',comp:''};
+    if(!D.hasOwners){ repoCols.owner=false; nsCols.owner=false; }
 
     // restore saved UI config from a snapshot
     if(baked && baked.cfg) applyConfig(baked.cfg);
 
-    buildScopeMenu(); buildColMenus(); renderLinks(); syncThemeLabel();
+    buildEnvMenu(); buildScopeMenu(); syncEnvUI(); buildColMenus();
+    renderLinks(); syncThemeLabel();
     document.getElementById('upload-screen').style.display='none';
     document.getElementById('dashboard-screen').style.display='block';
     syncSearchInputs(); syncMinInputs();
@@ -957,25 +1179,37 @@ function buildDashboard(baked){
 }
 
 function currentConfig(){
-  return { ownerScope:ownerScope, breakdownSel:breakdownSel, repoFilters:repoFilters,
+  return { envScope:envScope, ownerScope:ownerScope, breakdownSel:breakdownSel, repoFilters:repoFilters,
            searches:searches, sortState:sortState, view:currentView, reportMode:reportMode,
-           repoCols:repoCols, assetCols:assetCols, repDensCols:repDensCols, repEolCols:repEolCols,
+           repoCols:repoCols, assetCols:assetCols, nsCols:nsCols, imgCols:imgCols, compCols:compCols,
+           repDensCols:repDensCols, repEolCols:repEolCols,
            minAssetsRepo:minAssetsRepo, minAssetsReport:minAssetsReport, showLinks:showLinks,
            theme:document.documentElement.getAttribute('data-theme') };
 }
 function applyConfig(c){
   if(!c) return;
+  if(c.envScope!==undefined&&c.envScope!==null){
+    for(var e=0;e<D.envs.length;e++) if(D.envs[e].id===c.envScope) envScope=c.envScope;
+  }
   if(c.ownerScope!==undefined) ownerScope=c.ownerScope;
   if(c.breakdownSel) breakdownSel=c.breakdownSel;
   if(c.repoFilters)  repoFilters=c.repoFilters;
-  if(c.searches)     searches=c.searches;
+  if(c.searches)     searches={repo:c.searches.repo||'',asset:c.searches.asset||'',rep:c.searches.rep||'',comp:c.searches.comp||''};
   if(c.sortState)    sortState=c.sortState;
+  if(!sortState.ns)   sortState.ns={key:'avg',dir:'desc'};
+  if(!sortState.img)  sortState.img={key:'crit',dir:'desc'};
+  if(!sortState.comp) sortState.comp={key:'critCves',dir:'desc'};
   if(c.view)         currentView=c.view;
   if(c.reportMode)   reportMode=c.reportMode;
   if(c.repoCols)     repoCols=c.repoCols;
   if(c.assetCols)    assetCols=c.assetCols;
+  if(c.nsCols)       nsCols=c.nsCols;
+  if(c.imgCols)      imgCols=c.imgCols;
+  if(c.compCols)     compCols=c.compCols;
   if(c.repDensCols)  repDensCols=c.repDensCols;
   if(c.repEolCols)   repEolCols=c.repEolCols;
+  if(repDensCols.env===undefined) repDensCols.env=true;
+  if(repEolCols.env===undefined)  repEolCols.env=true;
   if(typeof c.minAssetsRepo==='number')   minAssetsRepo=c.minAssetsRepo;
   if(typeof c.minAssetsReport==='number') minAssetsReport=c.minAssetsReport;
   if(c.showLinks) showLinks={ asset:c.showLinks.asset!==false, report:c.showLinks.report!==false };
@@ -992,7 +1226,7 @@ function syncMinInputs(){
   var b=document.getElementById('repcog-min'); if(b) b.value=minAssetsReport||0;
 }
 function syncSearchInputs(){
-  var m=[['repo-search','repo'],['asset-search','asset'],['rep-search','rep']];
+  var m=[['repo-search','repo'],['asset-search','asset'],['rep-search','rep'],['comp-search','comp']];
   for(var i=0;i<m.length;i++){
     var el=document.getElementById(m[i][0]); if(!el) continue;
     el.value=searches[m[i][1]]||'';
@@ -1006,6 +1240,50 @@ function setDateLabel(iso){
   var p=iso.split('-');
   var M=['January','February','March','April','May','June','July','August','September','October','November','December'];
   el.textContent=parseInt(p[2],10)+' '+(M[parseInt(p[1],10)-1]||'')+' '+p[0];
+}
+
+// ══════════ ENVIRONMENT MENU ══════════
+function buildEnvMenu(){
+  var wrap=document.getElementById('hd-env-wrap'), menu=document.getElementById('hd-env-menu');
+  if(!wrap||!menu) return;
+  if(D.aggMode||D.envs.length<2){ wrap.style.display='none'; return; }
+  wrap.style.display='';
+  var h='<div class="hdrop-title">Environment</div>';
+  D.envs.forEach(function(e){
+    var sel=e.id===envScope;
+    h+='<button class="hdrop-item'+(sel?' sel':'')+'" data-e="'+esc(e.id)+'"><span class="tick">'+(sel?'&#10003;':'')+'</span>'+esc(e.name)+
+       '<span style="margin-left:auto;color:var(--muted);font-size:0.62rem;text-transform:uppercase">'+(e.type==='rhacs'?'RHACS':'Tenable')+'</span></button>';
+  });
+  menu.innerHTML=h;
+  var bs=menu.querySelectorAll('[data-e]');
+  for(var i=0;i<bs.length;i++){
+    (function(b){ b.addEventListener('click',function(){
+      setEnvScope(b.getAttribute('data-e'));
+      menu.classList.remove('open'); document.getElementById('hd-env-btn').classList.remove('open');
+    }); })(bs[i]);
+  }
+  var ae=activeEnv();
+  document.getElementById('hd-env-val').textContent=ae?ae.name:'—';
+}
+function setEnvScope(id){
+  if(envScope===id) return;
+  envScope=id;
+  // Repo/namespace filters and table searches belong to the previous
+  // environment's Asset View — reset them on switch.
+  repoFilters={};
+  searches.repo=''; searches.asset=''; searches.comp='';
+  syncSearchInputs(); updateChips();
+  buildEnvMenu(); syncEnvUI(); buildColMenus(); renderAll(); updateExportNote();
+}
+// Swap the Asset View chrome (titles, chip label, components panel) to match
+// the active environment's scan type.
+function syncEnvUI(){
+  var rh=isRhacs();
+  var t1=document.getElementById('repo-panel-title'); if(t1) t1.textContent=rh?'Namespaces':'Repositories';
+  var t2=document.getElementById('asset-panel-title'); if(t2) t2.textContent=rh?'Images':'Assets';
+  var cl=document.getElementById('filter-chip-label'); if(cl) cl.textContent=rh?'Namespace:':'Repo:';
+  var mt=document.getElementById('rcog-min-title'); if(mt) mt.textContent=rh?'Min images per namespace':'Min assets per repo';
+  var cp=document.getElementById('components-panel'); if(cp) cp.style.display=rh?'':'none';
 }
 
 // ══════════ DIVISION MENU (filter + breakdown) ══════════
@@ -1052,7 +1330,7 @@ function buildScopeMenu(){
       menu.classList.add('open'); document.getElementById('hd-scope-btn').classList.add('open');
     }); })(acts[k]);
   }
-  var n=Object.keys(breakdownSel).length;
+  var n=setSize(breakdownSel);
   document.getElementById('hd-scope-val').textContent=(ownerScope||'All')+(n?' \u00b7 '+n+' shown':'');
 }
 
@@ -1064,25 +1342,38 @@ var ASSET_COL_DEFS=[ {k:'ip',label:'IP Address',cls:''},{k:'repo',label:'Reposit
   {k:'crit',label:'Criticals',cls:'t-crit'},{k:'high',label:'High',cls:'t-high'},
   {k:'med',label:'Medium',cls:'t-med'},{k:'low',label:'Low',cls:'t-low'},
   {k:'eol',label:'EOL',cls:'t-eol'},{k:'eolOS',label:'EOL OS',cls:'t-eol'} ];
-var REP_DENS_DEFS=[ {k:'owner',label:'Division',cls:''},{k:'assets',label:'Assets',cls:''},
+var NS_COL_DEFS=[ {k:'owner',label:'Division',cls:''},{k:'cluster',label:'Cluster',cls:''},
+  {k:'images',label:'Images',cls:''},{k:'crit',label:'Crits',cls:'t-crit'},{k:'avg',label:'Avg Crit/Image',cls:'t-crit'} ];
+var IMG_COL_DEFS=[ {k:'nsCount',label:'Namespaces',cls:''},{k:'crit',label:'Criticals',cls:'t-crit'},
+  {k:'remediated',label:'Remediated if Patched',cls:'t-low'} ];
+var COMP_COL_DEFS=[ {k:'images',label:'Images',cls:''},{k:'critCves',label:'Critical CVEs',cls:'t-crit'},
+  {k:'resolved',label:'Resolved if Patched',cls:'t-low'} ];
+var REP_DENS_DEFS=[ {k:'env',label:'Environment',cls:''},{k:'owner',label:'Division',cls:''},{k:'assets',label:'Assets',cls:''},
   {k:'crit',label:'Criticals',cls:'t-crit'},{k:'avg',label:'Avg Crit/Asset',cls:'t-crit'} ];
-var REP_EOL_DEFS=[ {k:'owner',label:'Division',cls:''},{k:'assets',label:'Assets',cls:''},
+var REP_EOL_DEFS=[ {k:'env',label:'Environment',cls:''},{k:'owner',label:'Division',cls:''},{k:'assets',label:'Assets',cls:''},
   {k:'eol',label:'EOL Assets',cls:'t-eol'},{k:'eolPct',label:'EOL %',cls:'t-eol'} ];
 
-// Aggregate-mode snapshots have no owners[] list, but each baked aggregate row
-// still carries its division, so check there too.
 function reportHasOwners(){
   if(!D.aggMode) return D.hasOwners;
-  var rs=D.aggRepos||[];
+  var rs=D.aggEntities||[];
   for(var i=0;i<rs.length;i++) if(rs[i].owner) return true;
   return false;
 }
-function buildToggleList(containerId,defs,store,after,ownerOk){
+function reportHasEnvCol(){
+  if(!D.aggMode) return D.envs.length>1;
+  var rs=D.aggEntities||[], seen={}, n=0;
+  for(var i=0;i<rs.length;i++){ var e=rs[i].env||''; if(!seen[e]){seen[e]=1;n++;} }
+  return n>1;
+}
+function buildToggleList(containerId,defs,store,after,ownerOk,envOk){
   var c=document.getElementById(containerId); if(!c) return;
+  var eolOk = isRhacs() ? false : !!(activeEnv()&&activeEnv().hasEOL);
+  if(containerId==='repcog-cols') eolOk=anyEOL();
   var h='';
   defs.forEach(function(d){
-    if((d.k==='eol'||d.k==='eolPct'||d.k==='eolOS')&&!D.hasEOL) return;
+    if((d.k==='eol'||d.k==='eolPct'||d.k==='eolOS')&&!eolOk) return;
     if(d.k==='owner'&&!(ownerOk===undefined?D.hasOwners:ownerOk)) return;
+    if(d.k==='env'&&!envOk) return;
     h+='<button class="col-toggle-btn '+d.cls+(store[d.k]?' active':'')+'" data-k="'+d.k+'">'+d.label+'</button>';
   });
   c.innerHTML=h;
@@ -1095,24 +1386,43 @@ function buildToggleList(containerId,defs,store,after,ownerOk){
   }
 }
 function buildColMenus(){
-  buildToggleList('rcog-cols',REPO_COL_DEFS,repoCols,function(){ renderRepoTable(); });
-  buildToggleList('acog-cols',ASSET_COL_DEFS,assetCols,function(){ renderAssetTable(); });
+  if(isRhacs()){
+    buildToggleList('rcog-cols',NS_COL_DEFS,nsCols,function(){ renderLeftTable(); });
+    buildToggleList('acog-cols',IMG_COL_DEFS,imgCols,function(){ renderRightTable(); });
+    buildToggleList('ccog-cols',COMP_COL_DEFS,compCols,function(){ renderCompTable(); });
+  } else {
+    buildToggleList('rcog-cols',REPO_COL_DEFS,repoCols,function(){ renderLeftTable(); });
+    buildToggleList('acog-cols',ASSET_COL_DEFS,assetCols,function(){ renderRightTable(); });
+  }
   buildReportColMenu();
 }
 function buildReportColMenu(){
-  var ok=reportHasOwners();
-  if(reportMode==='density') buildToggleList('repcog-cols',REP_DENS_DEFS,repDensCols,function(){ renderReportTable(); },ok);
-  else buildToggleList('repcog-cols',REP_EOL_DEFS,repEolCols,function(){ renderReportTable(); },ok);
+  var ok=reportHasOwners(), ev=reportHasEnvCol();
+  if(reportMode==='density') buildToggleList('repcog-cols',REP_DENS_DEFS,repDensCols,function(){ renderReportTable(); },ok,ev);
+  else buildToggleList('repcog-cols',REP_EOL_DEFS,repEolCols,function(){ renderReportTable(); },ok,ev);
 }
 
 // ══════════ SCOPED DATA ══════════
-function scopedAssets(){
-  if(!ownerScope) return D.assets;
-  var o=null;
-  for(var i=0;i<D.owners.length;i++) if(D.owners[i].owner===ownerScope){ o=D.owners[i]; break; }
-  if(!o) return D.assets;
-  var rs={}; o.repos.forEach(function(r){ rs[r]=true; });
-  return D.assets.filter(function(a){ return rs[a.repo]; });
+// Set of repo/namespace names in the current Division scope, or null for all
+function ownerNameSet(){
+  if(!ownerScope) return null;
+  for(var i=0;i<D.owners.length;i++)
+    if(D.owners[i].owner===ownerScope){
+      var s={}; D.owners[i].repos.forEach(function(r){ s[r]=true; });
+      return s;
+    }
+  return null;
+}
+// ── Tenable ──
+function scopedAssets(env){
+  env=env||activeEnv();
+  if(!env||env.type!=='tenable') return [];
+  var s=ownerNameSet();
+  return s ? env.assets.filter(function(a){ return s[a.repo]; }) : env.assets;
+}
+function viewAssets(){
+  var b=scopedAssets();
+  return setSize(repoFilters) ? b.filter(function(a){return repoFilters[a.repo];}) : b;
 }
 function repoAggregates(assets){
   var m={};
@@ -1124,40 +1434,80 @@ function repoAggregates(assets){
     return { repo:r.repo, owner:r.owner, assets:r.assets, crit:r.crit, eol:r.eol,
              avg:r.assets?r.crit/r.assets:0, eolPct:r.assets?(r.eol/r.assets)*100:0 }; });
 }
-// In aggregate mode the snapshot carries precomputed figures rather than asset rows
-function currentStats(){ return D.aggMode ? D.aggStats : statsFor(viewAssets()); }
-function currentRepoAggs(){ return D.aggMode ? D.aggRepos.slice() : repoAggregates(viewAssets()); }
-
-// Lock the UI to a single view when the snapshot was exported view-scoped
-function applyViewLock(){
-  var locked = !!D.viewLock;
-  var sw = document.querySelector('#hd-cog-menu .view-switch');
-  var swTitle = sw ? sw.previousElementSibling : null;
-  if (sw) sw.style.display = locked ? 'none' : '';
-  if (swTitle && swTitle.className==='hdrop-title') swTitle.style.display = locked ? 'none' : '';
-  // A full export is impossible once asset rows have been stripped out
-  var ef = document.getElementById('exp-full');
-  if (ef) ef.style.display = D.aggMode ? 'none' : '';
-  // Division scoping needs asset rows to recompute against
-  var sc = document.getElementById('hd-scope-wrap');
-  if (sc && D.aggMode) sc.style.display = 'none';
-}
-
-function applyMinAssets(list,min){ return (min&&min>0)?list.filter(function(r){return r.assets>=min;}):list; }
 function statsFor(assets){
   var n=assets.length, crit=0, eol=0;
   for(var i=0;i<n;i++){ crit+=assets[i].critical; if(assets[i].isEOL) eol++; }
   var reps={}; assets.forEach(function(a){reps[a.repo]=true;});
-  return { n:n, crit:crit, eol:eol, avg:n?crit/n:0, eolPct:n?Math.round(eol/n*100):0, repoCount:Object.keys(reps).length };
+  return { n:n, crit:crit, eol:eol, avg:n?crit/n:0, eolPct:n?Math.round(eol/n*100):0, repoCount:setSize(reps) };
 }
-function viewAssets(){
-  var b=scopedAssets();
-  return Object.keys(repoFilters).length ? b.filter(function(a){return repoFilters[a.repo];}) : b;
+// ── RHACS ──
+// Namespaces of an RHACS env, narrowed by Division scope + an optional filter set
+function rhacsNsSet(env,nameSet,filterSet){
+  var out={};
+  Object.keys(env.nsCluster).forEach(function(ns){
+    if(nameSet&&!nameSet[ns]) return;
+    if(filterSet&&setSize(filterSet)&&!filterSet[ns]) return;
+    out[ns]=true;
+  });
+  return out;
+}
+// Everything the RHACS Asset View shows, derived from the env's indexes for a
+// given namespace set — so Division scoping and namespace filters recompute
+// "namespaces running this image" correctly.
+function rhacsCompute(env,nsSet){
+  var imgScope={}; // image -> in-scope namespace count
+  Object.keys(env.imgNs).forEach(function(img){
+    var c=0, m=env.imgNs[img];
+    for(var ns in m) if(nsSet[ns]) c++;
+    if(c>0) imgScope[img]=c;
+  });
+  var images=Object.keys(imgScope).map(function(img){
+    var crit=setSize(env.imgCves[img]||{});
+    return { image:img, nsCount:imgScope[img], crit:crit, remediated:crit*imgScope[img] };
+  });
+  var namespaces=Object.keys(nsSet).map(function(ns){
+    var imgs=0, crit=0;
+    Object.keys(imgScope).forEach(function(img){
+      if(env.imgNs[img][ns]){ imgs++; crit+=setSize(env.imgCves[img]||{}); }
+    });
+    return { ns:ns, owner:(ownerScope||D.repoOwnerMap[ns]||''), cluster:env.nsCluster[ns]||'',
+             images:imgs, crit:crit, avg:imgs?crit/imgs:0 };
+  });
+  var components=[];
+  Object.keys(env.compIndex).forEach(function(comp){
+    var imgsN=0, critCves=0, resolved=0, m=env.compIndex[comp];
+    Object.keys(m).forEach(function(img){
+      if(!imgScope[img]) return;
+      var nC=setSize(m[img].cves); if(!nC) return;
+      imgsN++; critCves+=nC;
+      resolved+=setSize(m[img].fix)*imgScope[img];
+    });
+    if(imgsN>0&&critCves>0) components.push({ component:comp, images:imgsN, critCves:critCves, resolved:resolved });
+  });
+  var totImgs=images.length, totCrit=0, clus={};
+  images.forEach(function(im){ totCrit+=im.crit; });
+  namespaces.forEach(function(n){ if(n.cluster) clus[n.cluster]=true; });
+  return { namespaces:namespaces, images:images, components:components,
+           stats:{ ns:namespaces.length, imgs:totImgs, crit:totCrit,
+                   avg:totImgs?totCrit/totImgs:0, clusters:setSize(clus) } };
+}
+function rhacsScoped(){ // Division scope only (left table ignores ns filters, like tenable repos table)
+  var env=activeEnv();
+  return rhacsCompute(env,rhacsNsSet(env,ownerNameSet(),null));
+}
+function rhacsView(){ // Division scope + namespace filters
+  var env=activeEnv();
+  return rhacsCompute(env,rhacsNsSet(env,ownerNameSet(),repoFilters));
+}
+
+function applyMinAssets(list,min,key){
+  key=key||'assets';
+  return (min&&min>0)?list.filter(function(r){return r[key]>=min;}):list;
 }
 
 // ══════════ ORCHESTRATION ══════════
 function renderAll(){
-  if(!D.aggMode){ renderStats(); renderRepoTable(); renderAssetTable(); }
+  if(!D.aggMode){ renderStats(); renderLeftTable(); renderRightTable(); renderCompTable(); }
   renderLinks(); renderReportView(); updateExportNote();
 }
 function setView(v){
@@ -1181,7 +1531,7 @@ function setReportMode(m){
 
 // ══════════ STAT CARDS ══════════
 function ownerBreakdownHTML(metric,base){
-  if(!Object.keys(breakdownSel).length||!D.hasOwners) return '';
+  if(!setSize(breakdownSel)||!D.hasOwners) return '';
   var rows=[];
   D.owners.forEach(function(o){
     if(!breakdownSel[o.owner]) return;
@@ -1196,44 +1546,94 @@ function ownerBreakdownHTML(metric,base){
   rows.sort(function(a,b){ return b.avg-a.avg; });
   return '<div class="stat-owner-breakdown">'+rows.map(function(r){return r.html;}).join('')+'</div>';
 }
+// RHACS flavour: per-Division rows computed from that owner's namespaces
+function rhacsBreakdownHTML(metric){
+  if(!setSize(breakdownSel)||!D.hasOwners) return '';
+  var env=activeEnv(), rows=[];
+  D.owners.forEach(function(o){
+    if(!breakdownSel[o.owner]) return;
+    var s={}; o.repos.forEach(function(r){ s[r]=true; });
+    var v=rhacsCompute(env,rhacsNsSet(env,s,setSize(repoFilters)?repoFilters:null)).stats, val;
+    if(metric==='ns') val=v.ns;
+    else if(metric==='imgs') val=v.imgs;
+    else if(metric==='crit') val=v.crit;
+    else val=v.imgs?v.avg.toFixed(2):'0.00';
+    rows.push({ avg:v.avg, html:'<div class="owner-stat-row"><button class="owner-stat-btn" onclick="jumpToOwner(\''+esc(o.owner).replace(/'/g,"\\'")+'\')">'+esc(o.owner)+'</button><span class="owner-stat-val">'+val+'</span></div>' });
+  });
+  rows.sort(function(a,b){ return b.avg-a.avg; });
+  return '<div class="stat-owner-breakdown">'+rows.map(function(r){return r.html;}).join('')+'</div>';
+}
 function jumpToOwner(o){ ownerScope=o; repoFilters={}; buildScopeMenu(); renderAll(); updateExportNote(); }
 function renderStats(){
-  var view=viewAssets(), s=statsFor(view);
-  var filtered=Object.keys(repoFilters).length>0;
-  var fb='<div class="stat-filter-badge'+(filtered?' visible':'')+'">Filtered</div>';
   var g=document.getElementById('asset-stats');
-  g.className='stats-grid '+(D.hasEOL?'cols-4':'cols-3');
-  var eolCard=D.hasEOL?('<div class="stat-card c-eol">'+fb+
+  var filtered=setSize(repoFilters)>0;
+  var fb='<div class="stat-filter-badge'+(filtered?' visible':'')+'">Filtered</div>';
+  if(isRhacs()){
+    var s=rhacsView().stats;
+    g.className='stats-grid cols-4';
+    g.innerHTML=
+      '<div class="stat-card c-assets">'+fb+'<div class="stat-card-inner"><div class="stat-card-main">'+
+        '<div class="stat-label">Total Namespaces</div><div class="stat-value">'+s.ns+'</div>'+
+        '<div class="stat-sub">across '+s.clusters+' cluster'+(s.clusters===1?'':'s')+'</div></div>'+
+        rhacsBreakdownHTML('ns')+'</div></div>'+
+      '<div class="stat-card c-assets">'+fb+'<div class="stat-card-inner"><div class="stat-card-main">'+
+        '<div class="stat-label">Total Scanned Images</div><div class="stat-value">'+s.imgs+'</div>'+
+        '<div class="stat-sub">unique images in scope</div></div>'+
+        rhacsBreakdownHTML('imgs')+'</div></div>'+
+      '<div class="stat-card c-crit">'+fb+'<div class="stat-card-inner"><div class="stat-card-main">'+
+        '<div class="stat-label">Critical Vulns</div><div class="stat-value">'+s.crit+'</div>'+
+        '<div class="stat-sub">total across all images</div></div>'+
+        rhacsBreakdownHTML('crit')+'</div></div>'+
+      '<div class="stat-card c-avg">'+fb+'<div class="stat-card-inner"><div class="stat-card-main">'+
+        '<div class="stat-label">Vulnerability Density</div><div class="stat-value">'+s.avg.toFixed(2)+'</div>'+
+        '<div class="stat-sub">mean critical vulnerabilities per image</div></div>'+
+        rhacsBreakdownHTML('avg')+'</div></div>';
+    return;
+  }
+  var view=viewAssets(), s2=statsFor(view);
+  var envEOL=!!(activeEnv()&&activeEnv().hasEOL);
+  g.className='stats-grid '+(envEOL?'cols-4':'cols-3');
+  var eolCard=envEOL?('<div class="stat-card c-eol">'+fb+
     '<div class="stat-card-inner"><div class="stat-card-main">'+
     '<div class="stat-label">EOL Assets</div>'+
-    '<div class="stat-value-row"><span class="stat-value">'+s.eol+'</span>'+(s.eol>0?'<span class="stat-pct">('+s.eolPct+'%)</span>':'')+'</div>'+
+    '<div class="stat-value-row"><span class="stat-value">'+s2.eol+'</span>'+(s2.eol>0?'<span class="stat-pct">('+s2.eolPct+'%)</span>':'')+'</div>'+
     '<div class="stat-sub">end-of-life OS detected</div></div>'+
     ownerBreakdownHTML('eol',view)+'</div></div>'):'';
   g.innerHTML=
     '<div class="stat-card c-assets">'+fb+'<div class="stat-card-inner"><div class="stat-card-main">'+
-      '<div class="stat-label">Total Scanned Assets</div><div class="stat-value">'+s.n+'</div>'+
-      '<div class="stat-sub">across '+s.repoCount+' repositor'+(s.repoCount===1?'y':'ies')+'</div></div>'+
+      '<div class="stat-label">Total Scanned Assets</div><div class="stat-value">'+s2.n+'</div>'+
+      '<div class="stat-sub">across '+s2.repoCount+' repositor'+(s2.repoCount===1?'y':'ies')+'</div></div>'+
       ownerBreakdownHTML('assets',view)+'</div></div>'+
     eolCard+
     '<div class="stat-card c-crit">'+fb+'<div class="stat-card-inner"><div class="stat-card-main">'+
-      '<div class="stat-label">Critical Vulns</div><div class="stat-value">'+s.crit+'</div>'+
+      '<div class="stat-label">Critical Vulns</div><div class="stat-value">'+s2.crit+'</div>'+
       '<div class="stat-sub">total across all assets</div></div>'+
       ownerBreakdownHTML('crit',view)+'</div></div>'+
     '<div class="stat-card c-avg">'+fb+'<div class="stat-card-inner"><div class="stat-card-main">'+
-      '<div class="stat-label">Vulnerability Density</div><div class="stat-value">'+s.avg.toFixed(2)+'</div>'+
+      '<div class="stat-label">Vulnerability Density</div><div class="stat-value">'+s2.avg.toFixed(2)+'</div>'+
       '<div class="stat-sub">mean critical vulnerabilities per asset</div></div>'+
       ownerBreakdownHTML('avg',view)+'</div></div>';
 }
 
-// ══════════ REPOSITORIES TABLE ══════════
+// ══════════ LEFT TABLE (Repositories / Namespaces) ══════════
 function repoVisibleCols(){
+  var envEOL=!!(activeEnv()&&activeEnv().hasEOL);
   var o=[{k:'repo',label:'Repository',left:true}];
   if(repoCols.owner&&D.hasOwners) o.push({k:'owner',label:'Division',left:true});
   if(repoCols.assets) o.push({k:'assets',label:'Assets'});
-  if(repoCols.eol&&D.hasEOL) o.push({k:'eol',label:'EOL'});
-  if(repoCols.eolPct&&D.hasEOL) o.push({k:'eolPct',label:'EOL %'});
+  if(repoCols.eol&&envEOL) o.push({k:'eol',label:'EOL'});
+  if(repoCols.eolPct&&envEOL) o.push({k:'eolPct',label:'EOL %'});
   if(repoCols.crit) o.push({k:'crit',label:'Crits'});
   if(repoCols.avg) o.push({k:'avg',label:'Avg'});
+  return o;
+}
+function nsVisibleCols(){
+  var o=[{k:'ns',label:'Namespace',left:true}];
+  if(nsCols.owner&&D.hasOwners) o.push({k:'owner',label:'Division',left:true});
+  if(nsCols.cluster) o.push({k:'cluster',label:'Cluster',left:true});
+  if(nsCols.images) o.push({k:'images',label:'Images'});
+  if(nsCols.crit) o.push({k:'crit',label:'Crits'});
+  if(nsCols.avg) o.push({k:'avg',label:'Avg Crit/Image'});
   return o;
 }
 function headHTML(cols,ss){
@@ -1253,6 +1653,7 @@ function wireHead(thEl,ss,strKeys,after){
     }); })(ths[i]);
   }
 }
+function renderLeftTable(){ if(isRhacs()) renderNsTable(); else renderRepoTable(); }
 function renderRepoTable(){
   var cols=repoVisibleCols(), th=document.getElementById('repo-thead');
   th.innerHTML=headHTML(cols,sortState.repo);
@@ -1277,14 +1678,42 @@ function renderRepoTable(){
     }).join('');
     return '<tr class="repo-row'+(repoFilters[r.repo]?' row-active':'')+'" data-repo="'+esc(r.repo)+'">'+tds+'</tr>';
   }).join('');
+  wireLeftRows(tb);
+}
+function renderNsTable(){
+  var cols=nsVisibleCols(), th=document.getElementById('repo-thead');
+  th.innerHTML=headHTML(cols,sortState.ns);
+  wireHead(th,sortState.ns,['ns','owner','cluster'],renderNsTable);
+  var data=applyMinAssets(rhacsScoped().namespaces,minAssetsRepo,'images');
+  var q=searches.repo.toLowerCase();
+  if(q) data=data.filter(function(r){return r.ns.toLowerCase().indexOf(q)!==-1||(r.owner||'').toLowerCase().indexOf(q)!==-1||(r.cluster||'').toLowerCase().indexOf(q)!==-1;});
+  data.sort(makeSorter(sortState.ns.key,sortState.ns.dir));
+  var tb=document.getElementById('repo-tbody');
+  if(!data.length){ tb.innerHTML='<tr><td colspan="'+cols.length+'" class="empty-state">No namespaces match the current filters</td></tr>'; return; }
+  var mA=0.001; data.forEach(function(r){ if(r.avg>mA)mA=r.avg; });
+  tb.innerHTML=data.map(function(r){
+    var tds=cols.map(function(c){
+      if(c.k==='ns')      return '<td class="name-cell left">'+(q?highlight(r.ns,q):esc(r.ns))+'</td>';
+      if(c.k==='owner')   return '<td class="owner-cell left">'+(q?highlight(r.owner||'',q):esc(r.owner||''))+'</td>';
+      if(c.k==='cluster') return '<td class="owner-cell left">'+(q?highlight(r.cluster||'',q):esc(r.cluster||''))+'</td>';
+      if(c.k==='images')  return '<td class="assets-val">'+r.images+'</td>';
+      if(c.k==='crit')    return '<td class="crit-val">'+r.crit+'</td>';
+      return '<td><div class="bar-wrap"><div class="mini-bar" style="width:'+Math.max(2,Math.round(r.avg/mA*50))+'px"></div><span class="avg-val">'+r.avg.toFixed(2)+'</span></div></td>';
+    }).join('');
+    return '<tr class="repo-row'+(repoFilters[r.ns]?' row-active':'')+'" data-repo="'+esc(r.ns)+'">'+tds+'</tr>';
+  }).join('');
+  wireLeftRows(tb);
+}
+function wireLeftRows(tb){
   var rows=tb.querySelectorAll('.repo-row');
   for(var j=0;j<rows.length;j++){
     (function(row){ row.addEventListener('click',function(){ toggleRepoFilter(row.getAttribute('data-repo')); }); })(rows[j]);
   }
 }
 
-// ══════════ ASSETS TABLE ══════════
+// ══════════ RIGHT TABLE (Assets / Images) ══════════
 function assetVisibleCols(){
+  var envEOL=!!(activeEnv()&&activeEnv().hasEOL);
   var o=[{k:'asset',label:'DNS Name',left:true}];
   if(assetCols.ip) o.push({k:'ip',label:'IP Address'});
   if(assetCols.repo) o.push({k:'repo',label:'Repo'});
@@ -1292,8 +1721,15 @@ function assetVisibleCols(){
   if(assetCols.high) o.push({k:'high',label:'High'});
   if(assetCols.med) o.push({k:'medium',label:'Med'});
   if(assetCols.low) o.push({k:'low',label:'Low'});
-  if(assetCols.eol&&D.hasEOL) o.push({k:'isEOL',label:'EOL'});
-  if(assetCols.eolOS&&D.hasEOL) o.push({k:'eolPlugin',label:'EOL OS',left:true});
+  if(assetCols.eol&&envEOL) o.push({k:'isEOL',label:'EOL'});
+  if(assetCols.eolOS&&envEOL) o.push({k:'eolPlugin',label:'EOL OS',left:true});
+  return o;
+}
+function imgVisibleCols(){
+  var o=[{k:'image',label:'Image',left:true}];
+  if(imgCols.nsCount) o.push({k:'nsCount',label:'Namespaces'});
+  if(imgCols.crit) o.push({k:'crit',label:'Crits'});
+  if(imgCols.remediated) o.push({k:'remediated',label:'Remediated if Patched'});
   return o;
 }
 function assetSortCmp(ss){
@@ -1308,6 +1744,7 @@ function assetSortCmp(ss){
     return 0;
   };
 }
+function renderRightTable(){ if(isRhacs()) renderImgTable(); else renderAssetTable(); }
 function renderAssetTable(){
   var cols=assetVisibleCols(), th=document.getElementById('asset-thead');
   th.innerHTML=headHTML(cols,sortState.asset);
@@ -1334,6 +1771,57 @@ function renderAssetTable(){
     }).join('')+'</tr>';
   };
   vsSet(data,makeRow,cols.length);
+}
+function renderImgTable(){
+  var cols=imgVisibleCols(), th=document.getElementById('asset-thead');
+  th.innerHTML=headHTML(cols,sortState.img);
+  wireHead(th,sortState.img,['image'],renderImgTable);
+  var data=rhacsView().images.slice();
+  var q=searches.asset.toLowerCase();
+  if(q) data=data.filter(function(a){ return a.image.toLowerCase().indexOf(q)!==-1; });
+  data.sort(makeSorter(sortState.img.key,sortState.img.dir));
+  var tb=document.getElementById('asset-tbody');
+  if(!data.length){ tb.innerHTML='<tr><td colspan="'+cols.length+'" class="empty-state">No images match the current filters</td></tr>'; vs.data=[]; return; }
+  var mC=0.001; data.forEach(function(a){ if(a.crit>mC) mC=a.crit; });
+  var makeRow=function(a){
+    return '<tr>'+cols.map(function(c){
+      if(c.k==='image')      return '<td class="name-cell left" title="'+esc(a.image)+'">'+(q?highlight(a.image,q):esc(a.image))+'</td>';
+      if(c.k==='nsCount')    return '<td class="assets-val">'+a.nsCount+'</td>';
+      if(c.k==='crit')       return '<td><div class="bar-wrap"><div class="mini-bar" style="width:'+Math.max(2,Math.round(a.crit/mC*45))+'px"></div><span class="crit-val">'+a.crit+'</span></div></td>';
+      return '<td class="low-val">'+a.remediated+'</td>';
+    }).join('')+'</tr>';
+  };
+  vsSet(data,makeRow,cols.length);
+}
+
+// ══════════ COMPONENTS TABLE (RHACS only) ══════════
+function compVisibleCols(){
+  var o=[{k:'component',label:'Component',left:true}];
+  if(compCols.images) o.push({k:'images',label:'Images'});
+  if(compCols.critCves) o.push({k:'critCves',label:'Critical CVEs'});
+  if(compCols.resolved) o.push({k:'resolved',label:'Resolved if Patched'});
+  return o;
+}
+function renderCompTable(){
+  if(!isRhacs()) return;
+  var cols=compVisibleCols(), th=document.getElementById('comp-thead');
+  if(!th) return;
+  th.innerHTML=headHTML(cols,sortState.comp);
+  wireHead(th,sortState.comp,['component'],renderCompTable);
+  var data=rhacsView().components.slice();
+  var q=searches.comp.toLowerCase();
+  if(q) data=data.filter(function(r){ return r.component.toLowerCase().indexOf(q)!==-1; });
+  data.sort(makeSorter(sortState.comp.key,sortState.comp.dir));
+  var tb=document.getElementById('comp-tbody');
+  if(!data.length){ tb.innerHTML='<tr><td colspan="'+cols.length+'" class="empty-state">No components with critical findings match the current filters</td></tr>'; return; }
+  tb.innerHTML=data.map(function(r){
+    return '<tr>'+cols.map(function(c){
+      if(c.k==='component') return '<td class="name-cell left" title="'+esc(r.component)+'">'+(q?highlight(r.component,q):esc(r.component))+'</td>';
+      if(c.k==='images')    return '<td class="assets-val">'+r.images+'</td>';
+      if(c.k==='critCves')  return '<td class="crit-val">'+r.critCves+'</td>';
+      return '<td class="low-val">'+r.resolved+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
 }
 
 // ══════════ VIRTUAL SCROLL ══════════
@@ -1364,15 +1852,15 @@ function vsRender(sh){
   }
 }
 
-// ══════════ REPO FILTERS ══════════
+// ══════════ REPO / NAMESPACE FILTERS ══════════
 function toggleRepoFilter(n){
   if(D.aggMode) return;
   if(repoFilters[n]) delete repoFilters[n]; else repoFilters[n]=true;
-  updateChips(); renderRepoTable(); renderAssetTable(); renderStats(); renderReportView(); updateExportNote();
+  updateChips(); renderLeftTable(); renderRightTable(); renderCompTable(); renderStats(); renderReportView(); updateExportNote();
 }
 function clearAllRepoFilters(){
   repoFilters={};
-  updateChips(); renderRepoTable(); renderAssetTable(); renderStats(); renderReportView(); updateExportNote();
+  updateChips(); renderLeftTable(); renderRightTable(); renderCompTable(); renderStats(); renderReportView(); updateExportNote();
 }
 function updateChips(){
   var row=document.getElementById('filter-chip-row'), el=document.getElementById('filter-chips');
@@ -1387,7 +1875,50 @@ function updateChips(){
   }
 }
 
-// ══════════ REPORT VIEW ══════════
+// ══════════ REPORT VIEW — CROSS-ENVIRONMENT ENTITIES ══════════
+// One row per Tenable repository (assets = host count) or RHACS namespace
+// (assets = image count), across every environment simultaneously.
+function allEntities(){
+  if(D.aggMode) return (D.aggEntities||[]).slice();
+  var nameSet=ownerNameSet(), out=[];
+  var af=activeEnv(), filters=setSize(repoFilters)?repoFilters:null;
+  D.envs.forEach(function(env){
+    var isActive=af&&env.id===af.id;
+    if(env.type==='tenable'){
+      var assets=nameSet?env.assets.filter(function(a){return nameSet[a.repo];}):env.assets;
+      if(filters&&isActive) assets=assets.filter(function(a){return filters[a.repo];});
+      repoAggregates(assets).forEach(function(r){
+        out.push({ name:r.repo, env:env.name, envType:'tenable', owner:r.owner,
+                   assets:r.assets, crit:r.crit, avg:r.avg,
+                   eol:r.eol, eolPct:r.eolPct, eolKnown:!!env.hasEOL });
+      });
+    } else {
+      var nsSet=rhacsNsSet(env,nameSet,(filters&&isActive)?filters:null);
+      rhacsCompute(env,nsSet).namespaces.forEach(function(n){
+        out.push({ name:n.ns, env:env.name, envType:'rhacs', owner:n.owner,
+                   assets:n.images, crit:n.crit, avg:n.avg,
+                   eol:0, eolPct:0, eolKnown:false });
+      });
+    }
+  });
+  return out;
+}
+function reportStats(){
+  if(D.aggMode) return D.aggStats;
+  var nameSet=ownerNameSet(), af=activeEnv(), filters=setSize(repoFilters)?repoFilters:null;
+  var n=0, crit=0, eol=0, eolBase=0, ents=allEntities();
+  ents.forEach(function(e){ n+=e.assets; crit+=e.crit; });
+  D.envs.forEach(function(env){
+    if(env.type!=='tenable'||!env.hasEOL) return;
+    var assets=nameSet?env.assets.filter(function(a){return nameSet[a.repo];}):env.assets;
+    if(filters&&af&&env.id===af.id) assets=assets.filter(function(a){return filters[a.repo];});
+    assets.forEach(function(a){ eolBase++; if(a.isEOL) eol++; });
+  });
+  return { n:n, crit:crit, avg:n?crit/n:0, eol:eol,
+           eolPct:eolBase?Math.round(eol/eolBase*100):0,
+           entityCount:ents.length, eolKnown:anyEOL() };
+}
+
 function donutSVG(pct){
   var r=42, c=2*Math.PI*r, on=c*(pct/100);
   return '<svg viewBox="0 0 104 104" preserveAspectRatio="xMidYMid meet">'+
@@ -1396,8 +1927,9 @@ function donutSVG(pct){
     'stroke-dasharray="'+on.toFixed(2)+' '+(c-on).toFixed(2)+'"/></svg>';
 }
 function renderReportView(){
-  var s=currentStats();
-  var eolCard=D.hasEOL?
+  var s=reportStats();
+  var eolOk=anyEOL();
+  var eolCard=eolOk?
     ('<div class="rep-card c-eol"><div class="rep-label">EOL Assets</div>'+
      '<div class="rep-eol-inner">'+
      '<div class="donut-wrap">'+donutSVG(s.eolPct)+'<div class="donut-label">'+s.eolPct+'%<span class="dl-sub">End of Life</span></div></div>'+
@@ -1407,26 +1939,28 @@ function renderReportView(){
      '<div class="rep-sub">no EOL data loaded</div></div>');
   document.getElementById('report-stats').innerHTML=
     '<div class="rep-card c-assets"><div class="rep-label">Total Scanned Assets</div>'+
-      '<div class="rep-value">'+s.n+'</div><div class="rep-sub">across '+s.repoCount+' repositor'+(s.repoCount===1?'y':'ies')+'</div></div>'+
+      '<div class="rep-value">'+s.n+'</div><div class="rep-sub">across '+s.entityCount+' entit'+(s.entityCount===1?'y':'ies')+'</div></div>'+
     eolCard+
     '<div class="rep-card c-crit"><div class="rep-label">Critical Vulnerabilities</div>'+
       '<div class="rep-value">'+s.crit+'</div><div class="rep-sub">total across all assets</div></div>'+
     '<div class="rep-card c-avg"><div class="rep-label">Vulnerability Density</div>'+
       '<div class="rep-value">'+s.avg.toFixed(2)+'</div>'+
       '<div class="rep-sub">mean critical vulnerabilities per asset</div></div>';
-  document.getElementById('rmode-eol').style.display=D.hasEOL?'':'none';
-  if(!D.hasEOL&&reportMode==='eol') reportMode='density';
+  document.getElementById('rmode-eol').style.display=eolOk?'':'none';
+  if(!eolOk&&reportMode==='eol') reportMode='density';
   renderReportTable();
 }
 function reportVisibleCols(){
-  var o=[{k:'rank',label:'#',left:true},{k:'repo',label:'Repository',left:true}];
-  var ok=reportHasOwners();
+  var o=[{k:'rank',label:'#',left:true},{k:'name',label:'Entity',left:true}];
+  var ok=reportHasOwners(), ev=reportHasEnvCol();
   if(reportMode==='density'){
+    if(repDensCols.env&&ev) o.push({k:'env',label:'Environment',left:true});
     if(repDensCols.owner&&ok) o.push({k:'owner',label:'Division',left:true});
     if(repDensCols.assets) o.push({k:'assets',label:'Assets'});
     if(repDensCols.crit)   o.push({k:'crit',label:'Criticals'});
     if(repDensCols.avg)    o.push({k:'avg',label:'Avg Crit/Asset'});
   } else {
+    if(repEolCols.env&&ev) o.push({k:'env',label:'Environment',left:true});
     if(repEolCols.owner&&ok) o.push({k:'owner',label:'Division',left:true});
     if(repEolCols.assets) o.push({k:'assets',label:'Assets'});
     if(repEolCols.eol)    o.push({k:'eol',label:'EOL Assets'});
@@ -1443,23 +1977,35 @@ function renderReportTable(){
   document.getElementById('rep-thead').innerHTML=cols.map(function(c){
     return '<th'+(c.left?' class="left"':'')+'>'+c.label+'</th>'; }).join('');
 
-  var data=applyMinAssets(currentRepoAggs(),minAssetsReport);
+  var data=applyMinAssets(allEntities(),minAssetsReport);
   var q=searches.rep.toLowerCase();
-  if(q) data=data.filter(function(r){ return r.repo.toLowerCase().indexOf(q)!==-1; });
+  if(q) data=data.filter(function(r){ return r.name.toLowerCase().indexOf(q)!==-1||(r.env||'').toLowerCase().indexOf(q)!==-1; });
+  // EOL ranking only means something for entities from an EOL-loaded Tenable
+  // environment; the rest show — and always rank after EOL-known entities.
   data.sort(dens ? function(a,b){ return b.avg-a.avg; }
-                 : function(a,b){ return (b.eolPct-a.eolPct)||(b.eol-a.eol); });
+                 : function(a,b){
+                     if(a.eolKnown!==b.eolKnown) return a.eolKnown?-1:1;
+                     return (b.eolPct-a.eolPct)||(b.eol-a.eol);
+                   });
   var tb=document.getElementById('rep-tbody');
-  if(!data.length){ tb.innerHTML='<tr><td colspan="'+cols.length+'" class="empty-state">No repositories match the current filters</td></tr>'; return; }
+  if(!data.length){ tb.innerHTML='<tr><td colspan="'+cols.length+'" class="empty-state">No entities match the current filters</td></tr>'; return; }
   var mA=0.001; data.forEach(function(r){ if(r.avg>mA) mA=r.avg; });
   tb.innerHTML=data.map(function(r,i){
     return '<tr>'+cols.map(function(c){
       if(c.k==='rank')   return '<td class="rank-cell left">'+(i+1)+'</td>';
-      if(c.k==='repo')   return '<td class="name-cell left">'+(q?highlight(r.repo,q):esc(r.repo))+'</td>';
+      if(c.k==='name')   return '<td class="name-cell left">'+(q?highlight(r.name,q):esc(r.name))+'</td>';
+      if(c.k==='env')    return '<td class="owner-cell left">'+(q?highlight(r.env||'',q):esc(r.env||''))+'</td>';
       if(c.k==='owner')  return '<td class="owner-cell left">'+esc(r.owner||'')+'</td>';
       if(c.k==='assets') return '<td class="assets-val">'+r.assets+'</td>';
       if(c.k==='crit')   return '<td class="crit-val">'+r.crit+'</td>';
-      if(c.k==='eol')    return '<td class="'+(r.eol>0?'eol-val':'assets-val')+'">'+r.eol+'</td>';
-      if(c.k==='eolPct') return '<td><div class="bar-wrap"><div class="mini-bar eolbar" style="width:'+Math.max(3,Math.round(r.eolPct/100*70))+'px"></div><span class="eolpct-val">'+r.eolPct.toFixed(0)+'%</span></div></td>';
+      if(c.k==='eol'){
+        if(!r.eolKnown) return '<td class="assets-val" style="color:var(--muted)">&mdash;</td>';
+        return '<td class="'+(r.eol>0?'eol-val':'assets-val')+'">'+r.eol+'</td>';
+      }
+      if(c.k==='eolPct'){
+        if(!r.eolKnown) return '<td class="assets-val" style="color:var(--muted)">&mdash;</td>';
+        return '<td><div class="bar-wrap"><div class="mini-bar eolbar" style="width:'+Math.max(3,Math.round(r.eolPct/100*70))+'px"></div><span class="eolpct-val">'+r.eolPct.toFixed(0)+'%</span></div></td>';
+      }
       return '<td><div class="bar-wrap"><div class="mini-bar" style="width:'+Math.max(3,Math.round(r.avg/mA*70))+'px"></div><span class="avg-val">'+r.avg.toFixed(2)+'</span></div></td>';
     }).join('')+'</tr>';
   }).join('');
@@ -1492,6 +2038,18 @@ function downloadCSV(csv,fn){
 }
 function scopeTag(){ return ownerScope?ownerScope.replace(/[^A-Za-z0-9_-]/g,'_'):'all'; }
 function exportRepoCSV(){
+  if(isRhacs()){
+    var cols2=nsVisibleCols(), data2=applyMinAssets(rhacsScoped().namespaces,minAssetsRepo,'images');
+    var q2=searches.repo.toLowerCase();
+    if(q2) data2=data2.filter(function(r){return r.ns.toLowerCase().indexOf(q2)!==-1||(r.owner||'').toLowerCase().indexOf(q2)!==-1||(r.cluster||'').toLowerCase().indexOf(q2)!==-1;});
+    data2.sort(makeSorter(sortState.ns.key,sortState.ns.dir));
+    var h2=cols2.map(function(c){ return c.k==='ns'?'Namespace':c.label; });
+    var rows2=data2.map(function(r){ return cols2.map(function(c){
+      if(c.k==='avg') return r.avg.toFixed(2);
+      return r[c.k]; }); });
+    downloadCSV(tableToCSV(h2,rows2),'namespaces-'+scopeTag()+'.csv');
+    return;
+  }
   var cols=repoVisibleCols(), data=applyMinAssets(repoAggregates(scopedAssets()),minAssetsRepo);
   var q=searches.repo.toLowerCase();
   if(q) data=data.filter(function(r){return r.repo.toLowerCase().indexOf(q)!==-1||(r.owner||'').toLowerCase().indexOf(q)!==-1;});
@@ -1504,6 +2062,16 @@ function exportRepoCSV(){
   downloadCSV(tableToCSV(h,rows),'repositories-'+scopeTag()+'.csv');
 }
 function exportAssetCSV(){
+  if(isRhacs()){
+    var cols2=imgVisibleCols(), data2=rhacsView().images.slice();
+    var q2=searches.asset.toLowerCase();
+    if(q2) data2=data2.filter(function(a){ return a.image.toLowerCase().indexOf(q2)!==-1; });
+    data2.sort(makeSorter(sortState.img.key,sortState.img.dir));
+    var h2=cols2.map(function(c){ return c.k==='crit'?'Criticals':c.label; });
+    var rows2=data2.map(function(a){ return cols2.map(function(c){ return a[c.k]; }); });
+    downloadCSV(tableToCSV(h2,rows2),'images-'+scopeTag()+'.csv');
+    return;
+  }
   var cols=assetVisibleCols(), data=viewAssets().slice();
   var q=searches.asset.toLowerCase();
   if(q) data=data.filter(function(a){
@@ -1516,17 +2084,31 @@ function exportAssetCSV(){
     return a[c.k]; }); });
   downloadCSV(tableToCSV(h,rows),'assets-'+scopeTag()+'.csv');
 }
+function exportCompCSV(){
+  if(!isRhacs()) return;
+  var cols=compVisibleCols(), data=rhacsView().components.slice();
+  var q=searches.comp.toLowerCase();
+  if(q) data=data.filter(function(r){ return r.component.toLowerCase().indexOf(q)!==-1; });
+  data.sort(makeSorter(sortState.comp.key,sortState.comp.dir));
+  var h=cols.map(function(c){ return c.label; });
+  var rows=data.map(function(r){ return cols.map(function(c){ return r[c.k]; }); });
+  downloadCSV(tableToCSV(h,rows),'components-'+scopeTag()+'.csv');
+}
 function exportReportCSV(){
   var dens=reportMode==='density', cols=reportVisibleCols();
-  var data=applyMinAssets(currentRepoAggs(),minAssetsReport);
+  var data=applyMinAssets(allEntities(),minAssetsReport);
   var q=searches.rep.toLowerCase();
-  if(q) data=data.filter(function(r){ return r.repo.toLowerCase().indexOf(q)!==-1; });
-  data.sort(dens?function(a,b){return b.avg-a.avg;}:function(a,b){return (b.eolPct-a.eolPct)||(b.eol-a.eol);});
+  if(q) data=data.filter(function(r){ return r.name.toLowerCase().indexOf(q)!==-1||(r.env||'').toLowerCase().indexOf(q)!==-1; });
+  data.sort(dens?function(a,b){return b.avg-a.avg;}
+                :function(a,b){ if(a.eolKnown!==b.eolKnown) return a.eolKnown?-1:1;
+                                return (b.eolPct-a.eolPct)||(b.eol-a.eol); });
   var h=cols.map(function(c){ return c.k==='rank'?'Rank':c.label; });
   var rows=data.map(function(r,i){ return cols.map(function(c){
     if(c.k==='rank') return i+1;
+    if(c.k==='name') return r.name;
     if(c.k==='avg') return r.avg.toFixed(2);
-    if(c.k==='eolPct') return r.eolPct.toFixed(0)+'%';
+    if(c.k==='eol') return r.eolKnown?r.eol:'';
+    if(c.k==='eolPct') return r.eolKnown?(r.eolPct.toFixed(0)+'%'):'';
     return r[c.k]; }); });
   downloadCSV(tableToCSV(h,rows),'report-'+(dens?'density':'eol')+'-'+scopeTag()+'.csv');
 }
@@ -1534,66 +2116,87 @@ function exportReportCSV(){
 // ══════════ SNAPSHOT EXPORT ══════════
 function updateExportNote(){
   var n=document.getElementById('export-scope-note'); if(!n) return;
-  var rc=Object.keys(repoFilters).length, parts=[];
-  if(ownerScope&&rc) parts.push('\u26a0 Scoped to '+ownerScope+' + '+rc+' repo filter'+(rc>1?'s':'')+'.');
+  var rc=setSize(repoFilters), parts=[];
+  var noun=isRhacs()?'namespace':'repositor';
+  var plural=function(c){ return isRhacs()?(c>1?'s':''):(c>1?'ies':'y'); };
+  if(ownerScope&&rc) parts.push('\u26a0 Scoped to '+ownerScope+' + '+rc+' '+(isRhacs()?'namespace':'repo')+' filter'+(rc>1?'s':'')+'.');
   else if(ownerScope) parts.push('\u26a0 Scoped to '+ownerScope+' only.');
-  else if(rc) parts.push('\u26a0 Scoped to '+rc+' filtered repositor'+(rc>1?'ies':'y')+'.');
+  else if(rc) parts.push('\u26a0 Scoped to '+rc+' filtered '+noun+plural(rc)+'.');
   n.innerHTML=parts.join('<br>'); n.style.display=parts.length?'block':'none';
+}
+// Trim one environment's data down to the current scope for export
+function scopeEnvForExport(env,nameSet,filters,isActive){
+  if(env.type==='tenable'){
+    var assets=nameSet?env.assets.filter(function(a){return nameSet[a.repo];}):env.assets;
+    if(filters&&isActive) assets=assets.filter(function(a){return filters[a.repo];});
+    return { id:env.id, name:env.name, type:'tenable', hasEOL:env.hasEOL, assets:assets };
+  }
+  var nsSet=rhacsNsSet(env,nameSet,(filters&&isActive)?filters:null);
+  var nsCluster={}, imgNs={}, imgCves={}, compIndex={};
+  Object.keys(env.nsCluster).forEach(function(ns){ if(nsSet[ns]) nsCluster[ns]=env.nsCluster[ns]; });
+  Object.keys(env.imgNs).forEach(function(img){
+    var kept={}, any=false;
+    for(var ns in env.imgNs[img]) if(nsSet[ns]){ kept[ns]=1; any=true; }
+    if(any) imgNs[img]=kept;
+  });
+  Object.keys(env.imgCves).forEach(function(img){ if(imgNs[img]) imgCves[img]=env.imgCves[img]; });
+  Object.keys(env.compIndex).forEach(function(comp){
+    var m={}, any=false;
+    Object.keys(env.compIndex[comp]).forEach(function(img){
+      if(imgNs[img]){ m[img]=env.compIndex[comp][img]; any=true; }
+    });
+    if(any) compIndex[comp]=m;
+  });
+  return { id:env.id, name:env.name, type:'rhacs', hasEOL:false,
+           nsCluster:nsCluster, imgNs:imgNs, imgCves:imgCves, compIndex:compIndex };
+}
+function envNameUniverse(envs){ // every repo/namespace name present in a set of envs
+  var s={};
+  envs.forEach(function(env){
+    if(env.type==='tenable') env.assets.forEach(function(a){ s[a.repo]=true; });
+    else Object.keys(env.nsCluster).forEach(function(ns){ s[ns]=true; });
+  });
+  return s;
 }
 function exportDashboard(mode){
   var raw=window._raw; if(!raw) return;
   mode = (mode==='view') ? 'view' : 'full';
-  var rc=Object.keys(repoFilters), out;
-  if(!ownerScope&&!rc.length){
-    out={ assets:raw.assets, owners:raw.owners, hasEOL:raw.hasEOL, eolKeys:raw.eolKeys,
-          eolPlugins:raw.eolPlugins, repoOwnerMap:raw.repoOwnerMap, reportDate:raw.reportDate,
-          title:raw.title, classification:raw.classification, links:raw.links };
+  var out;
+  var nameSet=ownerNameSet(), filters=setSize(repoFilters)?repoFilters:null;
+  if(!nameSet&&!filters){
+    out={ envs:raw.envs, owners:raw.owners, repoOwnerMap:raw.repoOwnerMap,
+          reportDate:raw.reportDate, title:raw.title, classification:raw.classification, links:raw.links };
   } else {
-    var base=scopedAssets();
-    var filtered=rc.length?base.filter(function(a){return repoFilters[a.repo];}):base;
-    var repoSet={}; filtered.forEach(function(a){ repoSet[a.repo]=true; });
+    var af=activeEnv();
+    var envs=raw.envs.map(function(env){
+      return scopeEnvForExport(env,nameSet,filters,af&&env.id===af.id);
+    });
+    var universe=envNameUniverse(envs);
     var owners=[], rom={};
-    if(ownerScope){
-      var rl=Object.keys(repoSet);
-      rl.forEach(function(r){ rom[r]=ownerScope; });
-      if(rl.length) owners.push({owner:ownerScope,repos:rl});
-    } else {
-      raw.owners.forEach(function(o){
-        var keep=o.repos.filter(function(r){return repoSet[r];});
-        if(keep.length) owners.push({owner:o.owner,repos:keep});
-      });
-      Object.keys(raw.repoOwnerMap||{}).forEach(function(r){ if(repoSet[r]) rom[r]=raw.repoOwnerMap[r]; });
-    }
-    var ek=[], ep=[];
-    if(raw.hasEOL){
-      var seen={};
-      filtered.forEach(function(a){
-        if(!a.isEOL) return;
-        var dk=(a.dns||'').toLowerCase(), ik=(a.ip||'').toLowerCase();
-        if(dk&&!seen[dk]){ seen[dk]=true; ek.push(dk); if(a.eolPlugin) ep.push([dk,a.eolPlugin]); }
-        if(ik&&!seen[ik]){ seen[ik]=true; ek.push(ik); if(a.eolPlugin) ep.push([ik,a.eolPlugin]); }
-      });
-    }
-    out={ assets:filtered, owners:owners, hasEOL:raw.hasEOL, eolKeys:ek, eolPlugins:ep,
-          repoOwnerMap:rom, reportDate:raw.reportDate||'', title:raw.title||'',
+    raw.owners.forEach(function(o){
+      var keep=o.repos.filter(function(r){return universe[r];});
+      if(keep.length) owners.push({owner:o.owner,repos:keep});
+    });
+    Object.keys(raw.repoOwnerMap||{}).forEach(function(r){ if(universe[r]) rom[r]=raw.repoOwnerMap[r]; });
+    out={ envs:envs, owners:owners, repoOwnerMap:rom,
+          reportDate:raw.reportDate||'', title:raw.title||'',
           classification:raw.classification||'', links:raw.links||[] };
   }
   // ── View-scoped export: keep only what the active view actually renders ──
   if (mode === 'view') {
     out.viewLock = currentView;
     if (currentView === 'report') {
-      // The Report View only ever renders repository aggregates and headline
-      // figures, so bake those and drop every asset-level record entirely —
-      // no hostnames, IPs, EOL plugin names, owner maps or links are included.
-      out.agg = { stats: currentStats(), repos: currentRepoAggs() };
-      out.assets = [];
-      out.eolKeys = [];
-      out.eolPlugins = [];
+      // The Report View only ever renders entity aggregates and headline
+      // figures, so bake those and drop every asset/image/CVE-level record
+      // entirely — no hostnames, IPs, image names, CVE ids, EOL plugin names,
+      // owner maps or per-record data are included.
+      out.agg = { stats: reportStats(), entities: allEntities() };
+      out.envs = [];
       out.owners = [];
       out.repoOwnerMap = {};
       // Links are rendered by the Report View too, so they must be retained.
     }
-    // An Asset View snapshot still needs its asset rows, but drops nothing else.
+    // An Asset View snapshot still needs its per-record rows, but drops nothing else.
   } else {
     out.viewLock = null;
   }
@@ -1609,33 +2212,52 @@ function exportDashboard(mode){
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(u);
 }
 
+// Lock the UI to a single view when the snapshot was exported view-scoped
+function applyViewLock(){
+  var locked = !!D.viewLock;
+  var sw = document.querySelector('#hd-cog-menu .view-switch');
+  var swTitle = sw ? sw.previousElementSibling : null;
+  if (sw) sw.style.display = locked ? 'none' : '';
+  if (swTitle && swTitle.className==='hdrop-title') swTitle.style.display = locked ? 'none' : '';
+  // A full export is impossible once per-record rows have been stripped out
+  var ef = document.getElementById('exp-full');
+  if (ef) ef.style.display = D.aggMode ? 'none' : '';
+  // Division scoping and the Environment tab need per-record data to recompute against
+  var sc = document.getElementById('hd-scope-wrap');
+  if (sc && D.aggMode) sc.style.display = 'none';
+  var ev = document.getElementById('hd-env-wrap');
+  if (ev && D.aggMode) ev.style.display = 'none';
+}
+
 // ══════════ RESET ══════════
 function resetDashboard(){
-  state.assetsText=null; state.reposText=null; state.eolText=null;
-  ['slot-assets','slot-repos','slot-eol'].forEach(function(i){ document.getElementById(i).classList.remove('loaded'); });
-  ['status-assets','status-repos','status-eol'].forEach(function(i){ document.getElementById(i).style.display='none'; });
+  setup={ reposText:null, envs:[ newSetupEnv() ] };
+  renderEnvBlocks();
+  document.getElementById('slot-repos').classList.remove('loaded');
+  document.getElementById('status-repos').style.display='none';
+  var ri=document.querySelector('#slot-repos input[type=file]'); if(ri) ri.value='';
   document.getElementById('btn-load').disabled=true;
   document.getElementById('upload-error').style.display='none';
   document.getElementById('dashboard-screen').style.display='none';
   document.getElementById('upload-screen').style.display='flex';
   document.getElementById('classification-banner').classList.remove('visible');
-  var fis=document.querySelectorAll('.upload-slot input[type=file]');
-  for(var i=0;i<fis.length;i++) fis[i].value='';
-  ownerScope=null; breakdownSel={}; repoFilters={};
-  searches={repo:'',asset:'',rep:''};
+  envScope=null; ownerScope=null; breakdownSel={}; repoFilters={};
+  searches={repo:'',asset:'',rep:'',comp:''};
   vs={data:[],makeRow:null,colSpan:1,measuredH:0,lastStart:0};
   currentView='asset'; reportMode='density'; minAssetsRepo=0; minAssetsReport=0;
-  D.aggMode=false; D.aggStats=null; D.aggRepos=null; D.viewLock=null;
+  D.aggMode=false; D.aggStats=null; D.aggEntities=null; D.viewLock=null;
   showLinks={asset:true,report:true};
   applyViewLock();
   setView('asset');
 }
 
 // ══════════ WIRING ══════════
+wireDrop('hd-env-btn','hd-env-menu');
 wireDrop('hd-scope-btn','hd-scope-menu');
 wireDrop('hd-cog-btn','hd-cog-menu');
 wireDrop('rcog-btn','rcog-menu');
 wireDrop('acog-btn','acog-menu');
+wireDrop('ccog-btn','ccog-menu');
 wireDrop('repcog-btn','repcog-menu');
 
 (function(){
@@ -1646,8 +2268,9 @@ wireDrop('repcog-btn','repcog-menu');
     inp.addEventListener('input',function(){ searches[key]=inp.value; clr.classList.toggle('visible',!!inp.value); deb(); });
     clr.addEventListener('click',function(){ inp.value=''; searches[key]=''; clr.classList.remove('visible'); rerender(); inp.focus(); });
   }
-  wireSearch('repo-search','repo',function(){ renderRepoTable(); });
-  wireSearch('asset-search','asset',function(){ renderAssetTable(); });
+  wireSearch('repo-search','repo',function(){ renderLeftTable(); });
+  wireSearch('asset-search','asset',function(){ renderRightTable(); });
+  wireSearch('comp-search','comp',function(){ renderCompTable(); });
   wireSearch('rep-search','rep',function(){ renderReportTable(); });
 
   function wireMin(id, setter, rerender){
@@ -1657,7 +2280,7 @@ wireDrop('repcog-btn','repcog-menu');
       var v=parseInt(el.value,10); setter(isNaN(v)||v<0?0:v); deb();
     });
   }
-  wireMin('rcog-min',   function(v){ minAssetsRepo=v; },   function(){ renderRepoTable(); });
+  wireMin('rcog-min',   function(v){ minAssetsRepo=v; },   function(){ renderLeftTable(); });
   wireMin('repcog-min', function(v){ minAssetsReport=v; }, function(){ renderReportTable(); });
   var sc=document.getElementById('asset-scroll');
   if(sc) sc.addEventListener('scroll',function(){ vsMaybeUpdate(); });
@@ -1674,6 +2297,7 @@ wireDrop('repcog-btn','repcog-menu');
 })();
 
 addLinkRow();
+renderEnvBlocks();
 syncLinkToggles();
 syncThemeLabel();
 if (window[BAKED_KEY]) buildDashboard(window[BAKED_KEY]);
