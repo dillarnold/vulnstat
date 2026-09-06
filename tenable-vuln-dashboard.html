@@ -116,6 +116,13 @@
   .btn-load:hover { opacity:0.88; }
   .btn-load:disabled { opacity:0.35; cursor:not-allowed; }
   .upload-error { color:var(--crit); font-size:0.78rem; margin-top:13px; display:none; }
+  .build-progress { position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:500;
+    align-items:center; justify-content:center; }
+  .build-progress-inner { background:var(--panel); border:1px solid var(--border2); border-radius:calc(var(--radius) * 2);
+    padding:28px 32px; width:min(420px,88vw); box-shadow:0 20px 60px rgba(0,0,0,0.4); }
+  .build-progress-track { height:8px; border-radius:4px; background:var(--surface); overflow:hidden; margin-bottom:14px; }
+  .build-progress-bar { height:100%; width:0%; background:var(--accent); border-radius:4px; transition:width 0.25s ease; }
+  .build-progress-label { font-family:var(--font-mono); font-size:0.8rem; color:var(--muted); text-align:center; }
 
   /* ── SHELL ── */
   #dashboard-screen { display:none; }
@@ -460,8 +467,14 @@
       </div>
     </div>
 
-    <button class="btn-load" id="btn-load" disabled onclick="buildDashboard()">Generate Dashboard</button>
+    <button class="btn-load" id="btn-load" disabled onclick="generateDashboardAsync()">Generate Dashboard</button>
     <div class="upload-error" id="upload-error"></div>
+    <div class="build-progress" id="build-progress" style="display:none">
+      <div class="build-progress-inner">
+        <div class="build-progress-track"><div class="build-progress-bar" id="build-progress-bar"></div></div>
+        <div class="build-progress-label" id="build-progress-label">Starting&hellip;</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1068,6 +1081,49 @@ function col(row){
     for(var j=0;j<ks.length;j++) if(ks[j].toLowerCase()===al[i].toLowerCase()&&row[ks[j]]!=='') return row[ks[j]]; }
   return '';
 }
+// Streaming character-level CSV parser: same quoted-comma/embedded-newline
+// handling as parseCSVRows/parseCSV, but never materializes a full array of
+// parsed rows — each row is handed to onRow() the moment it's complete, then
+// discarded. For files with hundreds of thousands of rows this is the
+// difference between peak memory scaling with unique derived entities
+// (accounts, images, CVEs — what the dedup indexes actually need) versus
+// scaling with raw row count times column count, which is what made very
+// large, wide files (e.g. AWS Inspector's 70+ columns) slow and memory-heavy.
+function streamParseCSV(text,onRow){
+  text=String(text||'').replace(/^\uFEFF/,'');
+  var header=null, row=[], cur='', q=false, i=0, n=text.length;
+  function endField(){ row.push(cur); cur=''; }
+  function endRow(){
+    endField();
+    if(row.length>1||row[0].trim()!==''){
+      if(!header){ header=row.map(function(x){return x.trim();}); }
+      else {
+        var o={};
+        for(var k=0;k<header.length;k++) o[header[k]]=(row[k]!==undefined?row[k]:'').trim();
+        onRow(o);
+      }
+    }
+    row=[];
+  }
+  while(i<n){
+    var c=text[i];
+    if(q){
+      if(c==='"'){
+        if(text[i+1]==='"'){ cur+='"'; i+=2; continue; }
+        q=false; i++; continue;
+      }
+      cur+=c; i++; continue;
+    }
+    if(c==='"'){ q=true; i++; continue; }
+    if(c===','){ endField(); i++; continue; }
+    if(c==='\n'||c==='\r'){
+      if(c==='\r'&&text[i+1]==='\n') i++;
+      endRow(); i++; continue;
+    }
+    cur+=c; i++;
+  }
+  if(cur!==''||row.length){ endRow(); }
+}
 function parseRepoList(s){
   s=s.trim().replace(/^\[/,'').replace(/\]$/,'');
   var q=[],m,re=/['"]([^'"]*)['"]/g;
@@ -1080,7 +1136,7 @@ function parseOwner(s){ return s.trim().replace(/^\[/,'').replace(/\]$/,'').trim
 // ══════════ ENVIRONMENT BUILDERS ══════════
 function buildTenableEnv(se){
   var assets=[];
-  parseCSV(se.files.assets).forEach(function(r){
+  streamParseCSV(se.files.assets,function(r){
     var dns=col(r,'DNS Name','dns name','hostname','asset');
     var ip =col(r,'IP Address','ip address','ip');
     if(!dns&&!ip) return;
@@ -1095,7 +1151,7 @@ function buildTenableEnv(se){
   var hasEOL=false;
   if(se.files.eol){
     var eolSet={}, eolPlug={};
-    parseCSV(se.files.eol).forEach(function(r){
+    streamParseCSV(se.files.eol,function(r){
       var dns=col(r,'DNS Name','dns name','hostname');
       var ip =col(r,'IP Address','ip address','ip');
       var pl =col(r,'Plugin Name','plugin name','plugin');
@@ -1116,9 +1172,8 @@ function buildTenableEnv(se){
 function buildRhacsEnv(se){
   // Index structures are the canonical data; every table/stat derives from
   // them at render time so Owner scoping recomputes naturally.
-  var nsCluster={}, imgNs={}, imgCves={}, compIndex={};
-  var rows=parseCSV(se.files.rhacs), used=0;
-  rows.forEach(function(r){
+  var nsCluster={}, imgNs={}, imgCves={}, compIndex={}, used=0;
+  streamParseCSV(se.files.rhacs,function(r){
     var img=col(r,'Image','image');
     if(!img) return; // rows with no image can't be attributed — dropped
     var ns=col(r,'Namespace','namespace'); if(!ns) return;
@@ -1183,9 +1238,8 @@ function awsComputeOverlap(imgDigest,eksAcctImg){
   return overlap;
 }
 function buildAwsEnv(se){
-  var ec2Account={}, ec2Cves={}, imgAccount={}, imgName={}, imgInUse={}, imgCves={}, imgDigest={};
-  var rows=parseCSV(se.files.aws), used=0;
-  rows.forEach(function(r){
+  var ec2Account={}, ec2Cves={}, imgAccount={}, imgName={}, imgInUse={}, imgCves={}, imgDigest={}, used=0;
+  streamParseCSV(se.files.aws,function(r){
     var status=col(r,'Status','status').toUpperCase();
     if(status&&status!=='ACTIVE') return; // CLOSED findings excluded from all counts
     var rtype=col(r,'Resource Type','resource type');
@@ -1213,7 +1267,7 @@ function buildAwsEnv(se){
   // ── Optional: account/owner/name/EKS-cluster mapping CSV ──
   var acctOwner={}, acctName={}, clusterAccount={};
   if(se.files.mapping){
-    parseCSV(se.files.mapping).forEach(function(r){
+    streamParseCSV(se.files.mapping,function(r){
       var acctId=col(r,'Account ID','account id'); if(!acctId) return;
       var name=col(r,'Workload Account Name','workload account name');
       var owner=col(r,'Owner','owner','Division','division');
@@ -1236,15 +1290,18 @@ function buildAwsEnv(se){
   // attributed to anything and are dropped, same philosophy as RHACS's
   // blank-Image rows. Critical findings are deduped by a CVE-like column
   // when the file has one; otherwise each critical row counts as one
-  // finding (no vulnerability identifier is available to dedupe on).
+  // finding (no vulnerability identifier is available to dedupe on). The
+  // CVE-like column (if any) is detected from the first row seen, since
+  // streaming means there's no upfront array to peek at.
   var eksAcctImg={}, eksAcctImgCrit={};
   if(se.files.eks){
-    var eksRows=parseCSV(se.files.eks);
-    var cveKey=eksRows.length?findColKey(eksRows[0],['CVE','Vulnerability ID','CVE ID','cve_id','vulnerability_id']):null;
-    eksRows.forEach(function(r,idx){
+    var cveKey, eksIdx=0;
+    streamParseCSV(se.files.eks,function(r){
+      if(cveKey===undefined) cveKey=findColKey(r,['CVE','Vulnerability ID','CVE ID','cve_id','vulnerability_id']);
       var digest=col(r,'image_digest','Image Digest','image digest');
       var host=col(r,'monitoring_host_name','Monitoring Host Name','monitoring host name');
       var sev=col(r,'severity','Severity').toUpperCase();
+      eksIdx++;
       if(!digest||!host) return;
       var acct=clusterAccount[host.trim().toLowerCase()];
       if(!acct) return; // unmapped cluster — can't attribute, dropped
@@ -1253,7 +1310,7 @@ function buildAwsEnv(se){
       if(sev==='CRITICAL'){
         if(!eksAcctImgCrit[acct]) eksAcctImgCrit[acct]={};
         if(!eksAcctImgCrit[acct][digest]) eksAcctImgCrit[acct][digest]={};
-        var key=cveKey?r[cveKey]:('row'+idx);
+        var key=cveKey?r[cveKey]:('row'+eksIdx);
         if(key) eksAcctImgCrit[acct][digest][key]=1;
       }
     });
@@ -1269,8 +1326,125 @@ function buildAwsEnv(se){
            hasMapping:!!se.files.mapping, hasEks:!!se.files.eks };
 }
 
+// ══════════ OFF-MAIN-THREAD PARSING (Web Worker) ══════════
+// Environment builders are pure functions (no DOM/global state — they only
+// touch their own arguments plus col/streamParseCSV/setSize and the small
+// AWS helper functions), so the exact same function bodies that run
+// synchronously above can also run unmodified inside a Worker. Rather than
+// hand-maintain a second copy of this logic (a guaranteed drift risk), the
+// Worker's source is assembled at runtime from these functions' own
+// .toString() output — one source of truth, two execution contexts.
+var WORKER_FN_LIST = [col, streamParseCSV, findColKey, setSize,
+  awsImageName, awsNormDigest, awsDigestFromResourceId, awsComputeOverlap,
+  buildTenableEnv, buildRhacsEnv, buildAwsEnv];
+var WORKER_ONMESSAGE = "\nself.onmessage = function(ev){\n" +
+  "  var m = ev.data, se = m.se;\n" +
+  "  try {\n" +
+  "    var env = m.kind==='rhacs' ? buildRhacsEnv(se) : m.kind==='aws' ? buildAwsEnv(se) : buildTenableEnv(se);\n" +
+  "    postMessage({ id:m.id, ok:true, env:env });\n" +
+  "  } catch(err){\n" +
+  "    postMessage({ id:m.id, ok:false, error:(err&&err.message)||String(err) });\n" +
+  "  }\n" +
+  "};\n";
+var _workerURL=null;
+function getEnvWorkerURL(){
+  if(_workerURL) return _workerURL;
+  var src=WORKER_FN_LIST.map(function(f){ return f.toString(); }).join('\n') + WORKER_ONMESSAGE;
+  var blob=new Blob([src],{type:'application/javascript'});
+  _workerURL=URL.createObjectURL(blob);
+  return _workerURL;
+}
+// Rough combined size of an environment's files, used to decide whether
+// spinning up a Worker is worth the overhead versus just building it
+// synchronously right here on the main thread.
+function envFileSize(se){
+  var n=0;
+  ['assets','eol','rhacs','aws','eks'].forEach(function(k){ if(se.files[k]) n+=se.files[k].length; });
+  return n;
+}
+var WORKER_SIZE_THRESHOLD=2*1024*1024; // ~2MB of combined CSV text
+// Builds one environment, off the main thread via a Worker when available
+// and the files are large enough to be worth it; otherwise builds it
+// synchronously right here (still gets the streaming-parser memory benefit
+// either way — the Worker only changes WHERE the work happens, not how).
+function buildEnvAsync(se){
+  var big=envFileSize(se)>=WORKER_SIZE_THRESHOLD;
+  var canWorker=typeof Worker!=='undefined'&&typeof Blob!=='undefined'&&typeof URL!=='undefined'&&URL.createObjectURL;
+  if(!big||!canWorker){
+    return new Promise(function(resolve,reject){
+      try{ resolve(se.type==='rhacs'?buildRhacsEnv(se):se.type==='aws'?buildAwsEnv(se):buildTenableEnv(se)); }
+      catch(err){ reject(err); }
+    });
+  }
+  return new Promise(function(resolve,reject){
+    var w;
+    try{ w=new Worker(getEnvWorkerURL()); }
+    catch(err){
+      // Worker construction can fail (e.g. blocked by CSP) — fall back to the
+      // synchronous build rather than losing the file entirely.
+      try{ resolve(se.type==='rhacs'?buildRhacsEnv(se):se.type==='aws'?buildAwsEnv(se):buildTenableEnv(se)); }
+      catch(err2){ reject(err2); }
+      return;
+    }
+    w.onmessage=function(ev){
+      w.terminate();
+      if(ev.data&&ev.data.ok) resolve(ev.data.env);
+      else reject(new Error((ev.data&&ev.data.error)||('Failed to parse "'+se.name+'".')));
+    };
+    w.onerror=function(err){
+      w.terminate();
+      reject(new Error('Worker error while parsing "'+se.name+'": '+(err&&err.message||'unknown error')));
+    };
+    w.postMessage({ id:se.id, kind:se.type, se:se });
+  });
+}
+// ══════════ SETUP-SCREEN PROGRESS UI ══════════
+function showBuildProgress(){
+  var o=document.getElementById('build-progress'); if(o) o.style.display='flex';
+  setBuildProgress(0,'Starting…');
+}
+function hideBuildProgress(){ var o=document.getElementById('build-progress'); if(o) o.style.display='none'; }
+function setBuildProgress(pct,label){
+  var bar=document.getElementById('build-progress-bar'); if(bar) bar.style.width=Math.round(pct*100)+'%';
+  var lbl=document.getElementById('build-progress-label'); if(lbl) lbl.textContent=label||'';
+}
+// Entry point for the "Generate Dashboard" button. Builds each environment
+// (offloading large ones to a Worker so the tab stays responsive), shows
+// progress as they complete, then hands the finished environments to
+// buildDashboard() to finish rendering — exactly as it always has.
+function generateDashboardAsync(){
+  var el=document.getElementById('upload-error'); if(el) el.style.display='none';
+  setup.envs.forEach(function(se,i){
+    if(!se.name||!se.name.trim())
+      se.name=ENV_TYPES[se.type].label+(setup.envs.length>1?' '+(i+1):'');
+  });
+  var total=setup.envs.length, done=0;
+  showBuildProgress();
+  setBuildProgress(0,'Parsing '+total+' environment'+(total===1?'':'s')+'…');
+  var envs=new Array(total);
+  var chain=Promise.resolve();
+  setup.envs.forEach(function(se,i){
+    chain=chain.then(function(){
+      setBuildProgress(done/total,'Parsing "'+se.name+'"…');
+      return buildEnvAsync(se).then(function(env){
+        envs[i]=env; done++;
+        setBuildProgress(done/total,done<total?('Parsed "'+se.name+'"'):'Finishing up…');
+      });
+    });
+  });
+  chain.then(function(){
+    hideBuildProgress();
+    buildDashboard(null,envs);
+  }).catch(function(err){
+    hideBuildProgress();
+    var e=document.getElementById('upload-error');
+    if(e){ e.textContent='\u26a0 '+err.message; e.style.display='block'; }
+    if(window.console) console.error(err);
+  });
+}
+
 // ══════════ BUILD ══════════
-function buildDashboard(baked){
+function buildDashboard(baked,preBuiltEnvs){
   try {
     var envs,owners,reportDate,title,classification,links;
     if(baked){
@@ -1283,11 +1457,15 @@ function buildDashboard(baked){
       D.aggEntities = baked.agg ? baked.agg.entities : null;
       D.viewLock = baked.viewLock || null;
     } else {
-      envs=[];
       setup.envs.forEach(function(se,i){
         if(!se.name||!se.name.trim())
           se.name=ENV_TYPES[se.type].label+(setup.envs.length>1?' '+(i+1):'');
-        envs.push(se.type==='rhacs'?buildRhacsEnv(se):se.type==='aws'?buildAwsEnv(se):buildTenableEnv(se));
+      });
+      // preBuiltEnvs lets the async/Worker path (generateDashboardAsync) hand
+      // over environments it already parsed off the main thread, instead of
+      // this function building them synchronously in a loop right here.
+      envs=preBuiltEnvs||setup.envs.map(function(se){
+        return se.type==='rhacs'?buildRhacsEnv(se):se.type==='aws'?buildAwsEnv(se):buildTenableEnv(se);
       });
       owners=[];
       if(setup.reposText){
@@ -2834,6 +3012,7 @@ function resetDashboard(){
   var ri=document.querySelector('#slot-repos input[type=file]'); if(ri) ri.value='';
   document.getElementById('btn-load').disabled=true;
   document.getElementById('upload-error').style.display='none';
+  hideBuildProgress();
   document.getElementById('dashboard-screen').style.display='none';
   document.getElementById('upload-screen').style.display='flex';
   document.getElementById('classification-banner').classList.remove('visible');
