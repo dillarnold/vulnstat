@@ -399,12 +399,10 @@
   .env-slots.one { grid-template-columns:1fr; }
   .env-slots.two { grid-template-columns:1fr 1fr; }
   @media (max-width:560px) { .env-slots.two { grid-template-columns:1fr; } }
-  .eks-col-row { margin-top:10px; }
-  .eks-col-row label { display:block; font-size:0.72rem; color:var(--muted); margin-bottom:6px; }
-  .eks-col-row label .sub { font-size:0.66rem; opacity:0.75; }
-  .eks-col-row input { width:100%; background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius);
-    color:var(--txt); font-family:var(--font-mono); font-size:0.8rem; padding:8px 11px; outline:none; box-sizing:border-box; }
-  .eks-col-row input:focus { border-color:var(--accent); }
+  .aws-style-row { display:flex; align-items:center; gap:10px; margin:10px 0 14px; }
+  .aws-style-label { font-size:0.72rem; color:var(--muted); white-space:nowrap; }
+  .aws-style-switch { display:flex; }
+  .slot-filesize { opacity:0.7; font-size:0.9em; }
   .env-add-row { text-align:left; margin-bottom:22px; }
   .universal-slot-wrap { margin-bottom:22px; }
   .universal-slot-wrap .upload-slots { grid-template-columns:1fr; margin-bottom:0; }
@@ -611,6 +609,28 @@
         <table class="data-table" id="comp-table"><thead><tr id="comp-thead"></tr></thead><tbody id="comp-tbody"></tbody></table>
       </div>
     </div>
+    <div class="table-panel" id="acctinv-panel" style="display:none">
+      <div class="table-panel-header">
+        <h3>Account Inventory</h3>
+        <div class="hdr-search">
+          <input id="acctinv-search" placeholder="Search" autocomplete="off">
+          <button class="clr" id="acctinv-search-clr" title="Clear">&#10005;</button>
+        </div>
+        <div class="col-cog-wrap">
+          <button class="col-cog-btn" id="aicog-btn" title="Table options">&#9881;</button>
+          <div class="col-cog-dropdown" id="aicog-menu">
+            <div class="col-cog-title">Columns</div>
+            <div class="col-toggle-list" id="aicog-cols"></div>
+            <hr class="col-cog-sep">
+            <div class="col-cog-title">Export</div>
+            <button class="col-csv-btn" onclick="exportAcctInvCSV()">&#8595; Export to CSV</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table" id="acctinv-table"><thead><tr id="acctinv-thead"></tr></thead><tbody id="acctinv-tbody"></tbody></table>
+      </div>
+    </div>
     <div class="links-panel" id="links-panel">
       <div class="links-panel-header"><h3>Links</h3></div>
       <div class="links-list" id="links-list"></div>
@@ -713,7 +733,8 @@ var BAKED_STRIP  = new RegExp('<script[^>]*>\\s*window\\.' + BAKED_KEY + '\\s*=[
 // ══════════ SETUP STATE ══════════
 // Each environment block on the setup screen: name, scan type, and its file texts.
 var _envSeq = 0;
-function newSetupEnv(){ _envSeq++; return { id:'env'+_envSeq, name:'', type:'tenable', eksClusterCol:'', files:{assets:null,eol:null,rhacs:null,aws:null,eks:null,mapping:null} }; }
+function newSetupEnv(){ _envSeq++; return { id:'env'+_envSeq, name:'', type:'tenable', awsImportStyle:'inspector',
+  files:{assets:null,eol:null,rhacs:null,aws:null,eks:null,mapping:null,container:null,ec2inv:null,acctinv:null} }; }
 var setup = { reposText:null, envs:[ newSetupEnv() ] };
 
 // ══════════ DASHBOARD STATE ══════════
@@ -724,11 +745,12 @@ var envScope=null;                       // id of the environment shown in Asset
 var ownerScope=null, breakdownSel={}, repoFilters={};
 var awsDedup={ exclusive:true, prefer:'eks' }; // duplicate-image handling between EKS scans and Inspector's ECR scan
 var reportEnvOff={}; // env ids excluded from Report View, e.g. {env3:true} — empty means every environment is included
-var searches={ repo:'', asset:'', rep:'', comp:'' };
+var searches={ repo:'', asset:'', rep:'', comp:'', acctinv:'' };
 var sortState={ repo:{key:'avg',dir:'desc'},  asset:{key:'critical',dir:'desc'},
                 ns:  {key:'avg',dir:'desc'},  img:  {key:'crit',dir:'desc'},
                 comp:{key:'critCves',dir:'desc'},
-                acct:{key:'liveDensity',dir:'desc'}, live:{key:'crit',dir:'desc'}, dorm:{key:'dormantCrit',dir:'desc'} };
+                acct:{key:'liveDensity',dir:'desc'}, live:{key:'crit',dir:'desc'}, dorm:{key:'dormantCrit',dir:'desc'},
+                acctinv:{key:'critical',dir:'desc'} };
 var currentView='asset', reportMode='density';
 var repoCols  = { owner:true, assets:true, eol:true, eolPct:true, crit:true, avg:true };
 var assetCols = { ip:true, repo:true, crit:true, high:false, med:false, low:false, eol:true, eolOS:true };
@@ -738,6 +760,7 @@ var compCols  = { images:true, critCves:true, resolved:true };
 var acctCols  = { name:true, owner:true, ec2:true, ec2Crit:true, liveImgs:true, liveCrit:true, eksImages:true, eksCrit:true, liveDensity:true };
 var liveCols  = { kind:true, account:true, crit:true };
 var dormCols  = { name:true, owner:true, dormantImgs:true, dormantCrit:true, avg:true };
+var acctinvCols = { name:true, coverage:true, critical:true, high:true, all:true };
 var repDensCols = { env:true, owner:false, assets:true, crit:true, avg:true };
 var repEolCols  = { env:true, owner:false, assets:true, eol:true, eolPct:true };
 var minAssetsRepo=0, minAssetsReport=0;
@@ -907,16 +930,25 @@ function saveSettings(){
 }
 
 // ══════════ SETUP SCREEN — ENVIRONMENT BLOCKS ══════════
+var AWS_INSPECTOR_SLOTS=[
+  { key:'aws',     label:'AWS Inspector CSV', optional:false, icon:'&#128196;' },
+  { key:'eks',     label:'EKS Scans CSV',     optional:true,  icon:'&#9888;' },
+  { key:'mapping', label:'Mapping CSV',       optional:true,  icon:'&#9888;' }
+];
+var AWS_TARGETED_SLOTS=[
+  { key:'container', label:'Container Inventory CSV', optional:true, icon:'&#128196;' },
+  { key:'ec2inv',     label:'EC2 Inventory CSV',       optional:true, icon:'&#128196;' },
+  { key:'acctinv',    label:'Account Inventory CSV',   optional:true, icon:'&#128196;' },
+  { key:'eks',        label:'EKS Scans CSV',           optional:true, icon:'&#9888;' },
+  { key:'mapping',    label:'Mapping CSV',             optional:true, icon:'&#9888;' }
+];
 var ENV_TYPES = {
   tenable: { label:'Tenable', slots:[
     { key:'assets', label:'Assets.csv', optional:false, icon:'&#128196;' },
     { key:'eol',    label:'EOL.csv',    optional:true,  icon:'&#9888;' } ] },
   rhacs:   { label:'RHACS', slots:[
     { key:'rhacs',  label:'RHACS.csv',  optional:false, icon:'&#128196;' } ] },
-  aws:     { label:'AWS Inspector', slots:[
-    { key:'aws',     label:'AWS Inspector CSV', optional:false, icon:'&#128196;' },
-    { key:'eks',     label:'EKS Scans CSV',     optional:true,  icon:'&#9888;' },
-    { key:'mapping', label:'Mapping CSV',       optional:true,  icon:'&#9888;' } ] }
+  aws:     { label:'AWS Inspector', slots:AWS_INSPECTOR_SLOTS }
 };
 function findSetupEnv(id){ for(var i=0;i<setup.envs.length;i++) if(setup.envs[i].id===id) return setup.envs[i]; return null; }
 function addEnvBlock(){ setup.envs.push(newSetupEnv()); renderEnvBlocks(); }
@@ -928,15 +960,37 @@ function removeEnvBlock(id){
 function setEnvType(id,type){
   var e=findSetupEnv(id); if(!e||e.type===type) return;
   e.type=type;
+  e.awsImportStyle='inspector';
   // Switching type clears that block's file state — the old files no longer apply.
-  e.files={assets:null,eol:null,rhacs:null,aws:null,eks:null,mapping:null};
+  e.files={assets:null,eol:null,rhacs:null,aws:null,eks:null,mapping:null,container:null,ec2inv:null,acctinv:null};
+  renderEnvBlocks();
+}
+function awsSlotsFor(e){
+  return e.awsImportStyle==='targeted' ? AWS_TARGETED_SLOTS : AWS_INSPECTOR_SLOTS;
+}
+function formatFileSize(n){
+  if(!n&&n!==0) return '';
+  var units=['B','KB','MB','GB','TB'], i=0;
+  while(n>=1024&&i<units.length-1){ n/=1024; i++; }
+  return (i===0?String(n):n.toFixed(1))+' '+units[i];
+}
+function setAwsImportStyle(id,style){
+  var e=findSetupEnv(id); if(!e) return;
+  style=(style==='targeted')?'targeted':'inspector';
+  if(e.awsImportStyle===style) return;
+  e.awsImportStyle=style;
+  // Switching import style clears the files that don't apply to it, same as
+  // switching environment type does.
+  if(style==='targeted') e.files.aws=null;
+  else { e.files.container=null; e.files.ec2inv=null; e.files.acctinv=null; }
   renderEnvBlocks();
 }
 function renderEnvBlocks(){
   var c=document.getElementById('env-blocks'); if(!c) return;
   c.innerHTML='';
   setup.envs.forEach(function(e,idx){
-    var t=ENV_TYPES[e.type];
+    var isAwsBlk=e.type==='aws';
+    var slotDefs=isAwsBlk?awsSlotsFor(e):ENV_TYPES[e.type].slots;
     var blk=document.createElement('div');
     blk.className='env-block';
     var head='<div class="env-block-head">'+
@@ -948,38 +1002,39 @@ function renderEnvBlocks(){
       '</div>'+
       (setup.envs.length>1?'<button class="env-remove" title="Remove environment">&#10005;</button>':'')+
     '</div>';
-    var slotCls = t.slots.length===1?'one':(t.slots.length===2?'two':'three');
+    var styleRow = isAwsBlk ?
+      ('<div class="aws-style-row"><span class="aws-style-label">Import style</span>'+
+       '<div class="env-type-switch aws-style-switch">'+
+         '<button data-s="inspector" class="'+((e.awsImportStyle||'inspector')==='inspector'?'active':'')+'">Full Inspector Export</button>'+
+         '<button data-s="targeted" class="'+(e.awsImportStyle==='targeted'?'active':'')+'">Targeted CSVs</button>'+
+       '</div></div>') : '';
+    var slotCls = slotDefs.length===1?'one':(slotDefs.length===2?'two':'three');
     var slots='<div class="upload-slots env-slots '+slotCls+'">';
-    t.slots.forEach(function(s){
-      var loaded=!!e.files[s.key];
+    slotDefs.forEach(function(s){
+      var f=e.files[s.key], loaded=!!f;
+      var loadedLabel=loaded?('&#10003; '+esc(f.name!==undefined?f.name:'Loaded')+(f.size!==undefined?' <span class="slot-filesize">('+formatFileSize(f.size)+')</span>':'')):'&#10003; Loaded';
       slots+='<div class="upload-slot'+(s.optional?' optional':'')+(loaded?' loaded':'')+'" data-slot="'+s.key+'">'+
         '<input type="file" accept=".csv">'+
         '<div class="slot-icon">'+s.icon+'</div>'+
         (s.optional?'<div class="slot-optional-badge">Optional</div>':'')+
         '<div class="slot-label">'+s.label+'</div>'+
         '<div class="slot-hint">Click or drag &amp; drop</div>'+
-        '<div class="slot-status"'+(loaded?' style="display:block"':'')+'>&#10003; Loaded</div>'+
+        '<div class="slot-status"'+(loaded?' style="display:block"':'')+'>'+loadedLabel+'</div>'+
       '</div>';
     });
     slots+='</div>';
-    var eksColRow = (e.type==='aws') ?
-      ('<div class="eks-col-row"><label>EKS Cluster column name in your Mapping CSV '+
-       '<span class="sub">(only needed if it differs from "EKS Cluster")</span></label>'+
-       '<input class="eks-col-input" placeholder="EKS Cluster" autocomplete="off"></div>') : '';
-    blk.innerHTML=head+slots+eksColRow;
+    blk.innerHTML=head+styleRow+slots;
     c.appendChild(blk);
 
     var nameInp=blk.querySelector('.env-name');
     nameInp.value=e.name;
     nameInp.addEventListener('input',function(){ e.name=nameInp.value; });
-    var eksColInp=blk.querySelector('.eks-col-input');
-    if(eksColInp){
-      eksColInp.value=e.eksClusterCol||'';
-      eksColInp.addEventListener('input',function(){ e.eksClusterCol=eksColInp.value; });
-    }
     var tbs=blk.querySelectorAll('.env-type-switch button');
     for(var i=0;i<tbs.length;i++){
-      (function(b){ b.addEventListener('click',function(){ setEnvType(e.id,b.getAttribute('data-t')); }); })(tbs[i]);
+      (function(b){ b.addEventListener('click',function(){
+        if(b.hasAttribute('data-s')) setAwsImportStyle(e.id,b.getAttribute('data-s'));
+        else setEnvType(e.id,b.getAttribute('data-t'));
+      }); })(tbs[i]);
     }
     var rm=blk.querySelector('.env-remove');
     if(rm) rm.addEventListener('click',function(){ removeEnvBlock(e.id); });
@@ -988,18 +1043,20 @@ function renderEnvBlocks(){
       (function(slot){
         var key=slot.getAttribute('data-slot');
         var inp=slot.querySelector('input[type=file]');
+        // Selecting a file just stores the File object — nothing is read
+        // here, so this is instant no matter how large the file is. Actual
+        // reading happens in chunks inside a Worker at "Generate Dashboard"
+        // time (see buildEnvAsync/streamCSVSource), which is what makes
+        // multi-GB files possible: the browser never has to hold the whole
+        // file as one JS string.
         function take(file){
-          var r=new FileReader();
-          r.onload=function(ev){
-            e.files[key]=ev.target.result;
-            slot.classList.add('loaded');
-            slot.querySelector('.slot-status').style.display='block';
-            var st=slot.querySelector('.slot-status');
-            st.innerHTML='&#10003; '+esc(file.name);
-            syncGenerateBtn();
-            document.getElementById('upload-error').style.display='none';
-          };
-          r.readAsText(file);
+          e.files[key]=file;
+          slot.classList.add('loaded');
+          var st=slot.querySelector('.slot-status');
+          st.style.display='block';
+          st.innerHTML='&#10003; '+esc(file.name)+' <span class="slot-filesize">('+formatFileSize(file.size)+')</span>';
+          syncGenerateBtn();
+          document.getElementById('upload-error').style.display='none';
         }
         inp.addEventListener('change',function(){ if(inp.files[0]) take(inp.files[0]); });
         slot.addEventListener('dragover',function(ev){ ev.preventDefault(); slot.classList.add('drag-over'); });
@@ -1011,14 +1068,23 @@ function renderEnvBlocks(){
   });
   syncGenerateBtn();
 }
-function envRequiredMet(e){ return e.type==='rhacs' ? !!e.files.rhacs : e.type==='aws' ? !!e.files.aws : !!e.files.assets; }
+function envRequiredMet(e){
+  if(e.type==='rhacs') return !!e.files.rhacs;
+  if(e.type==='aws'){
+    if(e.awsImportStyle==='targeted') return !!(e.files.container||e.files.ec2inv||e.files.acctinv);
+    return !!e.files.aws;
+  }
+  return !!e.files.assets;
+}
 function syncGenerateBtn(){
   var ok=setup.envs.length>0;
   for(var i=0;i<setup.envs.length;i++) if(!envRequiredMet(setup.envs[i])) ok=false;
   var b=document.getElementById('btn-load'); if(b) b.disabled=!ok;
 }
 
-// Universal Repositories.csv slot (static in the HTML)
+// Universal Repositories.csv slot (static in the HTML) — always small
+// (an account/repo-to-owner list, not a scan export), so it's read
+// synchronously and in full, same as before.
 function dragOver(e,id){ e.preventDefault(); document.getElementById(id).classList.add('drag-over'); }
 function dragLeave(e,id){ document.getElementById(id).classList.remove('drag-over'); }
 function dropFile(e,type){ e.preventDefault();
@@ -1089,9 +1155,22 @@ function col(row){
 // (accounts, images, CVEs — what the dedup indexes actually need) versus
 // scaling with raw row count times column count, which is what made very
 // large, wide files (e.g. AWS Inspector's 70+ columns) slow and memory-heavy.
-function streamParseCSV(text,onRow){
-  text=String(text||'').replace(/^\uFEFF/,'');
-  var header=null, row=[], cur='', q=false, i=0, n=text.length;
+// Stateful CSV parser core: create once per file, call .push(chunkText) as
+// many times as needed (rows/fields/quotes are correctly carried across
+// chunk boundaries), then .end() once to flush the final row. This is what
+// makes genuinely large files possible — the caller can feed it 8MB at a
+// time from a File on disk without ever holding the whole file as one
+// string, and it never materializes a full array of rows either way.
+function makeCSVStreamer(onRow){
+  var header=null, row=[], cur='', q=false, first=true;
+  // Two lookahead-dependent decisions (is a quote inside a quoted field an
+  // escaped "" or a closing quote; is \r part of a \r\n pair) can't always
+  // be resolved within a single chunk if the character in question is the
+  // very last one pushed. These flags defer that one decision to the start
+  // of the next push() (or to end(), if there is no next chunk) instead of
+  // guessing — guessing is exactly what silently corrupted escaped quotes
+  // split across a chunk boundary in earlier testing.
+  var pendingQuote=false, pendingCR=false;
   function endField(){ row.push(cur); cur=''; }
   function endRow(){
     endField();
@@ -1105,24 +1184,108 @@ function streamParseCSV(text,onRow){
     }
     row=[];
   }
-  while(i<n){
-    var c=text[i];
-    if(q){
-      if(c==='"'){
-        if(text[i+1]==='"'){ cur+='"'; i+=2; continue; }
-        q=false; i++; continue;
+  return {
+    push:function(text){
+      text=String(text||'');
+      if(first){ text=text.replace(/^\uFEFF/,''); first=false; }
+      var i=0, n=text.length;
+      if(pendingQuote){
+        pendingQuote=false;
+        if(n>0&&text[0]==='"'){ cur+='"'; i=1; } // it was "" (escaped) — consume the second quote
+        else { q=false; } // it was a lone closing quote — nothing to consume, reprocess from i=0 normally
+      } else if(pendingCR){
+        pendingCR=false;
+        if(n>0&&text[0]==='\n') i=1; // it was \r\n — consume the \n, the row already ended on the \r
       }
-      cur+=c; i++; continue;
+      while(i<n){
+        var c=text[i];
+        if(q){
+          if(c==='"'){
+            if(i+1<n){
+              if(text[i+1]==='"'){ cur+='"'; i+=2; continue; }
+              q=false; i++; continue;
+            }
+            pendingQuote=true; i++; continue; // last char of this chunk — resolve on the next push()/end()
+          }
+          cur+=c; i++; continue;
+        }
+        if(c==='"'){ q=true; i++; continue; }
+        if(c===','){ endField(); i++; continue; }
+        if(c==='\n'){ endRow(); i++; continue; }
+        if(c==='\r'){
+          endRow();
+          if(i+1<n){ i+= (text[i+1]==='\n') ? 2 : 1; }
+          else { pendingCR=true; i++; } // last char of this chunk — the \n (if any) arrives next push()
+          continue;
+        }
+        cur+=c; i++;
+      }
+    },
+    end:function(){
+      pendingQuote=false; pendingCR=false; // any pending decision at EOF resolves to "nothing more follows"
+      if(cur!==''||row.length){ endRow(); }
     }
-    if(c==='"'){ q=true; i++; continue; }
-    if(c===','){ endField(); i++; continue; }
-    if(c==='\n'||c==='\r'){
-      if(c==='\r'&&text[i+1]==='\n') i++;
-      endRow(); i++; continue;
-    }
-    cur+=c; i++;
+  };
+}
+// Single-shot convenience wrapper over makeCSVStreamer for callers that
+// already have the whole file as one string (small files: Repositories.csv,
+// Mapping CSV — never the large scan exports, which use streamCSVSource).
+function streamParseCSV(text,onRow){
+  var s=makeCSVStreamer(onRow);
+  s.push(text); s.end();
+}
+// Approximate byte/char size of a parse source, whether it's an already-read
+// string or a not-yet-read File — used for worker-dispatch decisions and for
+// weighting multi-file progress reporting.
+function fileByteSize(source){
+  if(!source) return 0;
+  if(typeof source==='string') return source.length;
+  if(typeof source.size==='number') return source.size;
+  return 0;
+}
+// Feeds CSV rows from either a File (chunked, constant-memory read — used
+// inside a Worker via FileReaderSync, which only exists there) or an
+// already-read string (single-shot, for small files) into onRow. This is
+// the one place that decides how a given file actually gets read, so every
+// builder function stays agnostic to whether it got a File or a string.
+function streamCSVSource(source,onRow,onProgress){
+  if(!source){ if(onProgress) onProgress(1); return; }
+  if(typeof source==='string'){
+    streamParseCSV(source,onRow);
+    if(onProgress) onProgress(1);
+    return;
   }
-  if(cur!==''||row.length){ endRow(); }
+  var streamer=makeCSVStreamer(onRow);
+  var CHUNK=8*1024*1024; // 8MB per chunk — small enough to keep memory flat, large enough to keep syscall overhead low
+  var total=source.size||0, offset=0;
+  var decoder=new TextDecoder('utf-8');
+  var frs=new FileReaderSync();
+  while(offset<total){
+    var end=Math.min(offset+CHUNK,total);
+    var slice=source.slice(offset,end);
+    var buf=frs.readAsArrayBuffer(slice);
+    var more=end<total;
+    streamer.push(decoder.decode(buf,{stream:more}));
+    offset=end;
+    if(onProgress) onProgress(total?offset/total:1);
+  }
+  streamer.end();
+  if(onProgress) onProgress(1);
+}
+// Returns a function that, called once per file (in the same order as
+// `files`), gives back a progress callback scoped to that file's share of
+// the group's total bytes — so a 5-file environment reports one smooth
+// overall 0..1 progress instead of jumping in five equal-sized steps
+// regardless of how lopsided the actual file sizes are.
+function makeMultiFileProgress(files,onProgress){
+  var sizes=files.map(fileByteSize);
+  var total=sizes.reduce(function(a,b){return a+b;},0);
+  var doneBefore=0, idx=0;
+  return function(){
+    var mySize=sizes[idx], myDoneBefore=doneBefore;
+    idx++; doneBefore+=mySize;
+    return function(frac){ if(onProgress&&total) onProgress((myDoneBefore+frac*mySize)/total); };
+  };
 }
 function parseRepoList(s){
   s=s.trim().replace(/^\[/,'').replace(/\]$/,'');
@@ -1134,9 +1297,10 @@ function parseRepoList(s){
 function parseOwner(s){ return s.trim().replace(/^\[/,'').replace(/\]$/,'').trim(); }
 
 // ══════════ ENVIRONMENT BUILDERS ══════════
-function buildTenableEnv(se){
+function buildTenableEnv(se,onProgress){
+  var nextP=makeMultiFileProgress([se.files.assets,se.files.eol],onProgress);
   var assets=[];
-  streamParseCSV(se.files.assets,function(r){
+  streamCSVSource(se.files.assets,function(r){
     var dns=col(r,'DNS Name','dns name','hostname','asset');
     var ip =col(r,'IP Address','ip address','ip');
     if(!dns&&!ip) return;
@@ -1146,12 +1310,12 @@ function buildTenableEnv(se){
       high:parseInt(col(r,'High'))||0,
       medium:parseInt(col(r,'Med.','Medium','med'))||0,
       low:parseInt(col(r,'Low'))||0, isEOL:false, eolPlugin:'' });
-  });
+  },nextP());
   if(!assets.length) throw new Error('No valid asset rows found in "'+se.name+'" (Tenable).');
   var hasEOL=false;
   if(se.files.eol){
     var eolSet={}, eolPlug={};
-    streamParseCSV(se.files.eol,function(r){
+    streamCSVSource(se.files.eol,function(r){
       var dns=col(r,'DNS Name','dns name','hostname');
       var ip =col(r,'IP Address','ip address','ip');
       var pl =col(r,'Plugin Name','plugin name','plugin');
@@ -1159,21 +1323,22 @@ function buildTenableEnv(se){
         var key=k.toLowerCase(); eolSet[key]=true;
         if(pl&&!eolPlug[key]) eolPlug[key]=pl;
       });
-    });
+    },nextP());
     hasEOL=setSize(eolSet)>0;
     assets.forEach(function(a){
       var dk=(a.dns||'').toLowerCase(), ik=(a.ip||'').toLowerCase();
       a.isEOL=!!(eolSet[dk]||eolSet[ik]);
       a.eolPlugin=eolPlug[dk]||eolPlug[ik]||'';
     });
-  }
+  } else { nextP()(1); }
   return { id:se.id, name:se.name, type:'tenable', hasEOL:hasEOL, assets:assets };
 }
-function buildRhacsEnv(se){
+function buildRhacsEnv(se,onProgress){
   // Index structures are the canonical data; every table/stat derives from
   // them at render time so Owner scoping recomputes naturally.
   var nsCluster={}, imgNs={}, imgCves={}, compIndex={}, used=0;
-  streamParseCSV(se.files.rhacs,function(r){
+  var nextP=makeMultiFileProgress([se.files.rhacs],onProgress);
+  streamCSVSource(se.files.rhacs,function(r){
     var img=col(r,'Image','image');
     if(!img) return; // rows with no image can't be attributed — dropped
     var ns=col(r,'Namespace','namespace'); if(!ns) return;
@@ -1193,7 +1358,7 @@ function buildRhacsEnv(se){
     compIndex[comp][img].cves[cve]=1;
     var fixable=col(r,'Fixable','fixable').toUpperCase();
     if(fixable==='YES'||fixable==='TRUE') compIndex[comp][img].fix[cve]=1;
-  });
+  },nextP());
   if(!used) throw new Error('No valid rows found in "'+se.name+'" (RHACS) — every row needs an Image and Namespace.');
   return { id:se.id, name:se.name, type:'rhacs', hasEOL:false,
            nsCluster:nsCluster, imgNs:imgNs, imgCves:imgCves, compIndex:compIndex };
@@ -1224,6 +1389,16 @@ function findColKey(sampleRow,names){
   for(var i=0;i<names.length;i++) for(var j=0;j<ks.length;j++) if(ks[j].toLowerCase()===names[i].toLowerCase()) return ks[j];
   return null;
 }
+// Finds a header key CONTAINING the given substring (case-insensitive) —
+// used for the mapping CSV's EKS-cluster column, which is only guaranteed
+// to include the phrase "EKS Cluster" somewhere in its name (e.g. a real
+// export might call it "DEKS Cluster" or "Mapped EKS Cluster IDs").
+function findColKeyContains(sampleRow,substr){
+  if(!sampleRow) return null;
+  var ks=Object.keys(sampleRow), s=substr.toLowerCase();
+  for(var j=0;j<ks.length;j++) if(ks[j].toLowerCase().indexOf(s)!==-1) return ks[j];
+  return null;
+}
 // Recomputes, from (possibly trimmed) imgDigest/eksAcctImg structures, the
 // set of normalized digests present in BOTH Inspector and EKS data.
 function awsComputeOverlap(imgDigest,eksAcctImg){
@@ -1237,74 +1412,149 @@ function awsComputeOverlap(imgDigest,eksAcctImg){
   });
   return overlap;
 }
-function buildAwsEnv(se){
-  var ec2Account={}, ec2Cves={}, imgAccount={}, imgName={}, imgInUse={}, imgCves={}, imgDigest={}, used=0;
-  streamParseCSV(se.files.aws,function(r){
-    var status=col(r,'Status','status').toUpperCase();
-    if(status&&status!=='ACTIVE') return; // CLOSED findings excluded from all counts
-    var rtype=col(r,'Resource Type','resource type');
-    var resId=col(r,'Resource ID','resource id'); if(!resId) return;
-    var account=col(r,'AWS Account Id','aws account id','account id');
-    var sev=col(r,'Severity','severity').toUpperCase();
-    var cve=col(r,'VulnerabilityId','vulnerability id','cve');
-    if(rtype==='AWS_EC2_INSTANCE'){
-      used++;
-      ec2Account[resId]=account;
-      if(sev==='CRITICAL'&&cve){ if(!ec2Cves[resId]) ec2Cves[resId]={}; ec2Cves[resId][cve]=1; }
-    } else if(rtype==='AWS_ECR_CONTAINER_IMAGE'){
-      used++;
-      imgAccount[resId]=account;
-      if(imgName[resId]===undefined) imgName[resId]=awsImageName(resId,col(r,'Container Image Tags','container image tags'));
-      var inUse=parseInt(col(r,'Image In Use Count','image in use count'))||0;
-      if(imgInUse[resId]===undefined||inUse>imgInUse[resId]) imgInUse[resId]=inUse;
-      if(sev==='CRITICAL'&&cve){ if(!imgCves[resId]) imgCves[resId]={}; imgCves[resId][cve]=1; }
-      if(imgDigest[resId]===undefined) imgDigest[resId]=awsDigestFromResourceId(resId);
-    }
-    // other resource types (e.g. Lambda) are recognized-but-skipped for this pass
-  });
-  if(!used) throw new Error('No valid EC2 or ECR image rows found in "'+se.name+'" (AWS Inspector).');
+// A resource's critical count, whether it comes from a per-finding CVE set
+// (Inspector, EKS — dedup by unique CVE) or a pre-aggregated count column
+// (the targeted container/EC2 inventory CSVs, which hand over a ready-made
+// number instead of one row per finding).
+function awsCritOf(cveMap,countMap,id){
+  if(cveMap&&cveMap[id]) return setSize(cveMap[id]);
+  if(countMap&&countMap[id]!==undefined) return countMap[id];
+  return 0;
+}
+function buildAwsEnv(se,onProgress){
+  var ec2Account={}, ec2Cves={}, ec2CritCount={};
+  var imgAccount={}, imgName={}, imgInUse={}, imgCves={}, imgCritCount={}, imgDigest={};
+  var used=0;
+  var targeted=se.awsImportStyle==='targeted';
+  var fileList=targeted
+    ? [se.files.container,se.files.ec2inv,se.files.acctinv,se.files.mapping,se.files.eks]
+    : [se.files.aws,se.files.mapping,se.files.eks];
+  var nextP=makeMultiFileProgress(fileList,onProgress);
+
+  if(!targeted){
+    // AWS Inspector: one row per (resource, finding). Resource Type is either
+    // AWS_EC2_INSTANCE or AWS_ECR_CONTAINER_IMAGE (Lambda and other types are
+    // skipped for now). "Image In Use Count" > 0 is Inspector's own signal for
+    // a currently-deployed image — no external live/dormant join needed. Only
+    // ACTIVE findings are counted; CLOSED (already-remediated) rows dropped.
+    streamCSVSource(se.files.aws,function(r){
+      var status=col(r,'Status','status').toUpperCase();
+      if(status&&status!=='ACTIVE') return; // CLOSED findings excluded from all counts
+      var rtype=col(r,'Resource Type','resource type');
+      var resId=col(r,'Resource ID','resource id'); if(!resId) return;
+      var account=col(r,'AWS Account Id','aws account id','account id');
+      var sev=col(r,'Severity','severity').toUpperCase();
+      var cve=col(r,'VulnerabilityId','vulnerability id','cve');
+      if(rtype==='AWS_EC2_INSTANCE'){
+        used++;
+        ec2Account[resId]=account;
+        if(sev==='CRITICAL'&&cve){ if(!ec2Cves[resId]) ec2Cves[resId]={}; ec2Cves[resId][cve]=1; }
+      } else if(rtype==='AWS_ECR_CONTAINER_IMAGE'){
+        used++;
+        imgAccount[resId]=account;
+        if(imgName[resId]===undefined) imgName[resId]=awsImageName(resId,col(r,'Container Image Tags','container image tags'));
+        var inUse=parseInt(col(r,'Image In Use Count','image in use count'))||0;
+        if(imgInUse[resId]===undefined||inUse>imgInUse[resId]) imgInUse[resId]=inUse;
+        if(sev==='CRITICAL'&&cve){ if(!imgCves[resId]) imgCves[resId]={}; imgCves[resId][cve]=1; }
+        if(imgDigest[resId]===undefined) imgDigest[resId]=awsDigestFromResourceId(resId);
+      }
+      // other resource types (e.g. Lambda) are recognized-but-skipped for this pass
+    },nextP());
+  } else {
+    // Targeted CSVs: each is already pre-aggregated (one row per resource,
+    // with ready-made Critical/High/All counts) rather than one row per
+    // finding — so there's no CVE identifier to dedupe on, only a count to
+    // take as-is.
+    var acctInventory=[], acctInvName={};
+    if(se.files.container){
+      streamCSVSource(se.files.container,function(r){
+        var img=col(r,'Image','image'); var repo=col(r,'Repository','repository');
+        if(!img&&!repo) return;
+        var resId=(repo||'')+'::'+(img||'');
+        used++;
+        imgAccount[resId]=col(r,'Account','account');
+        if(imgName[resId]===undefined){
+          var tag=col(r,'Image Tags','image tags');
+          imgName[resId]=(repo||img)+(tag?(':'+tag):'');
+        }
+        var deployed=parseInt(col(r,'Deployed ECS Tasks/EKS Pods','deployed ecs tasks/eks pods'))||0;
+        if(imgInUse[resId]===undefined||deployed>imgInUse[resId]) imgInUse[resId]=deployed;
+        imgCritCount[resId]=parseInt(col(r,'Critical','critical'))||0;
+      },nextP());
+    } else nextP()(1);
+    if(se.files.ec2inv){
+      streamCSVSource(se.files.ec2inv,function(r){
+        var vm=col(r,'Virtual machine','virtual machine'); if(!vm) return;
+        used++;
+        ec2Account[vm]=col(r,'Account','account');
+        ec2CritCount[vm]=parseInt(col(r,'Critical','critical'))||0;
+      },nextP());
+    } else nextP()(1);
+    if(se.files.acctinv){
+      streamCSVSource(se.files.acctinv,function(r){
+        var acctId=col(r,'Account number','account number'); if(!acctId) return;
+        used++;
+        var name=col(r,'Account name','account name');
+        if(name){ acctInvName[acctId]=name; }
+        acctInventory.push({ account:acctId, name:name||'',
+          coverage:col(r,'Inspector coverage','inspector coverage'),
+          critical:parseInt(col(r,'Critical','critical'))||0,
+          high:parseInt(col(r,'High','high'))||0,
+          all:parseInt(col(r,'All','all'))||0 });
+      },nextP());
+    } else nextP()(1);
+  }
+  if(!used) throw new Error(targeted
+    ? 'No valid rows found in the targeted CSVs for "'+se.name+'" — at least one of Container inventory, EC2 inventory, or Account inventory needs valid rows.'
+    : 'No valid EC2 or ECR image rows found in "'+se.name+'" (AWS Inspector).');
 
   // ── Optional: account/owner/name/EKS-cluster mapping CSV ──
   var acctOwner={}, acctName={}, clusterAccount={};
   if(se.files.mapping){
-    streamParseCSV(se.files.mapping,function(r){
+    var clusterKey;
+    streamCSVSource(se.files.mapping,function(r){
+      if(clusterKey===undefined) clusterKey=findColKeyContains(r,'eks cluster');
       var acctId=col(r,'Account ID','account id'); if(!acctId) return;
       var name=col(r,'Workload Account Name','workload account name');
       var owner=col(r,'Owner','owner','Division','division');
       if(name) acctName[acctId]=name;
       if(owner) acctOwner[acctId]=owner;
-      var clusterCol=se.eksClusterCol&&se.eksClusterCol.trim()?se.eksClusterCol.trim():'EKS Cluster';
-      var clusterField=col(r,clusterCol,'EKS Cluster','eks cluster');
+      var clusterField=clusterKey?r[clusterKey]:'';
       if(clusterField){
         clusterField.split(',').forEach(function(c){
           c=c.trim(); if(c) clusterAccount[c.toLowerCase()]=acctId;
         });
       }
-    });
+    },nextP());
+  } else nextP()(1);
+  if(targeted&&se.files.acctinv){
+    // Account inventory names only fill in what the mapping CSV didn't already provide.
+    Object.keys(acctInvName).forEach(function(a){ if(!acctName[a]) acctName[a]=acctInvName[a]; });
   }
 
   // ── Optional: EKS runtime scan CSV ──
   // Each image is attributed to the AWS account that owns the EKS cluster
   // (monitoring_host_name) it was found running in, via the mapping CSV's
-  // cluster list. Rows whose cluster has no known account mapping can't be
-  // attributed to anything and are dropped, same philosophy as RHACS's
-  // blank-Image rows. Critical findings are deduped by a CVE-like column
-  // when the file has one; otherwise each critical row counts as one
-  // finding (no vulnerability identifier is available to dedupe on). The
-  // CVE-like column (if any) is detected from the first row seen, since
-  // streaming means there's no upfront array to peek at.
+  // cluster list. Clusters with no known account mapping still surface —
+  // the cluster name itself is used in place of an account id, rather than
+  // dropping the data — so nothing found at runtime silently disappears.
+  // Critical findings are deduped by a CVE-like column when the file has
+  // one; otherwise each critical row counts as one finding (no vulnerability
+  // identifier is available to dedupe on). The CVE-like column (if any) is
+  // detected from the first row seen, since streaming means there's no
+  // upfront array to peek at.
   var eksAcctImg={}, eksAcctImgCrit={};
   if(se.files.eks){
     var cveKey, eksIdx=0;
-    streamParseCSV(se.files.eks,function(r){
+    streamCSVSource(se.files.eks,function(r){
       if(cveKey===undefined) cveKey=findColKey(r,['CVE','Vulnerability ID','CVE ID','cve_id','vulnerability_id']);
       var digest=col(r,'image_digest','Image Digest','image digest');
       var host=col(r,'monitoring_host_name','Monitoring Host Name','monitoring host name');
       var sev=col(r,'severity','Severity').toUpperCase();
       eksIdx++;
       if(!digest||!host) return;
-      var acct=clusterAccount[host.trim().toLowerCase()];
-      if(!acct) return; // unmapped cluster — can't attribute, dropped
+      var hostTrim=host.trim();
+      var acct=clusterAccount[hostTrim.toLowerCase()]||hostTrim; // unmapped cluster: use its name as the account label
       if(!eksAcctImg[acct]) eksAcctImg[acct]={};
       eksAcctImg[acct][digest]=true;
       if(sev==='CRITICAL'){
@@ -1313,17 +1563,19 @@ function buildAwsEnv(se){
         var key=cveKey?r[cveKey]:('row'+eksIdx);
         if(key) eksAcctImgCrit[acct][digest][key]=1;
       }
-    });
-  }
+    },nextP());
+  } else nextP()(1);
 
   var overlapDigests=awsComputeOverlap(imgDigest,eksAcctImg);
 
-  return { id:se.id, name:se.name, type:'aws', hasEOL:false,
-           ec2Account:ec2Account, ec2Cves:ec2Cves,
-           imgAccount:imgAccount, imgName:imgName, imgInUse:imgInUse, imgCves:imgCves, imgDigest:imgDigest,
+  return { id:se.id, name:se.name, type:'aws', hasEOL:false, awsImportStyle:se.awsImportStyle||'inspector',
+           ec2Account:ec2Account, ec2Cves:ec2Cves, ec2CritCount:ec2CritCount,
+           imgAccount:imgAccount, imgName:imgName, imgInUse:imgInUse, imgCves:imgCves, imgCritCount:imgCritCount, imgDigest:imgDigest,
            acctOwner:acctOwner, acctName:acctName, clusterAccount:clusterAccount,
            eksAcctImg:eksAcctImg, eksAcctImgCrit:eksAcctImgCrit, overlapDigests:overlapDigests,
-           hasMapping:!!se.files.mapping, hasEks:!!se.files.eks };
+           acctInventory:targeted?acctInventory:null,
+           hasMapping:!!se.files.mapping, hasEks:!!se.files.eks,
+           hasAcctInventory:targeted&&!!se.files.acctinv };
 }
 
 // ══════════ OFF-MAIN-THREAD PARSING (Web Worker) ══════════
@@ -1334,16 +1586,18 @@ function buildAwsEnv(se){
 // hand-maintain a second copy of this logic (a guaranteed drift risk), the
 // Worker's source is assembled at runtime from these functions' own
 // .toString() output — one source of truth, two execution contexts.
-var WORKER_FN_LIST = [col, streamParseCSV, findColKey, setSize,
-  awsImageName, awsNormDigest, awsDigestFromResourceId, awsComputeOverlap,
+var WORKER_FN_LIST = [col, makeCSVStreamer, streamParseCSV, fileByteSize, streamCSVSource, makeMultiFileProgress,
+  findColKey, findColKeyContains, setSize,
+  awsImageName, awsNormDigest, awsDigestFromResourceId, awsComputeOverlap, awsCritOf,
   buildTenableEnv, buildRhacsEnv, buildAwsEnv];
 var WORKER_ONMESSAGE = "\nself.onmessage = function(ev){\n" +
   "  var m = ev.data, se = m.se;\n" +
+  "  function progress(frac){ postMessage({ id:m.id, kind:'progress', progress:frac }); }\n" +
   "  try {\n" +
-  "    var env = m.kind==='rhacs' ? buildRhacsEnv(se) : m.kind==='aws' ? buildAwsEnv(se) : buildTenableEnv(se);\n" +
-  "    postMessage({ id:m.id, ok:true, env:env });\n" +
+  "    var env = m.kind==='rhacs' ? buildRhacsEnv(se,progress) : m.kind==='aws' ? buildAwsEnv(se,progress) : buildTenableEnv(se,progress);\n" +
+  "    postMessage({ id:m.id, kind:'done', ok:true, env:env });\n" +
   "  } catch(err){\n" +
-  "    postMessage({ id:m.id, ok:false, error:(err&&err.message)||String(err) });\n" +
+  "    postMessage({ id:m.id, kind:'done', ok:false, error:(err&&err.message)||String(err) });\n" +
   "  }\n" +
   "};\n";
 var _workerURL=null;
@@ -1354,25 +1608,19 @@ function getEnvWorkerURL(){
   _workerURL=URL.createObjectURL(blob);
   return _workerURL;
 }
-// Rough combined size of an environment's files, used to decide whether
-// spinning up a Worker is worth the overhead versus just building it
-// synchronously right here on the main thread.
-function envFileSize(se){
-  var n=0;
-  ['assets','eol','rhacs','aws','eks'].forEach(function(k){ if(se.files[k]) n+=se.files[k].length; });
-  return n;
-}
-var WORKER_SIZE_THRESHOLD=2*1024*1024; // ~2MB of combined CSV text
-// Builds one environment, off the main thread via a Worker when available
-// and the files are large enough to be worth it; otherwise builds it
-// synchronously right here (still gets the streaming-parser memory benefit
-// either way — the Worker only changes WHERE the work happens, not how).
-function buildEnvAsync(se){
-  var big=envFileSize(se)>=WORKER_SIZE_THRESHOLD;
+// Builds one environment. Whenever a Worker is available this always runs
+// there — file reading is now deferred until this point (see renderEnvBlocks:
+// selecting a file just stores the File object, nothing is read yet), and
+// only a Worker can read a File in constant-memory chunks via
+// FileReaderSync, which doesn't exist on the main thread. The synchronous
+// fallback below only matters for browsers without Worker support, or when
+// se.files.* are already-read strings (small Repositories/Mapping-style
+// inputs, and every existing test — those never need a Worker at all).
+function buildEnvAsync(se,onProgress){
   var canWorker=typeof Worker!=='undefined'&&typeof Blob!=='undefined'&&typeof URL!=='undefined'&&URL.createObjectURL;
-  if(!big||!canWorker){
+  if(!canWorker){
     return new Promise(function(resolve,reject){
-      try{ resolve(se.type==='rhacs'?buildRhacsEnv(se):se.type==='aws'?buildAwsEnv(se):buildTenableEnv(se)); }
+      try{ resolve(se.type==='rhacs'?buildRhacsEnv(se,onProgress):se.type==='aws'?buildAwsEnv(se,onProgress):buildTenableEnv(se,onProgress)); }
       catch(err){ reject(err); }
     });
   }
@@ -1381,12 +1629,15 @@ function buildEnvAsync(se){
     try{ w=new Worker(getEnvWorkerURL()); }
     catch(err){
       // Worker construction can fail (e.g. blocked by CSP) — fall back to the
-      // synchronous build rather than losing the file entirely.
-      try{ resolve(se.type==='rhacs'?buildRhacsEnv(se):se.type==='aws'?buildAwsEnv(se):buildTenableEnv(se)); }
+      // synchronous build rather than losing the file entirely. Note this
+      // fallback can't chunk-read a File on the main thread, so it's only a
+      // safety net, not a substitute for the Worker path at real scale.
+      try{ resolve(se.type==='rhacs'?buildRhacsEnv(se,onProgress):se.type==='aws'?buildAwsEnv(se,onProgress):buildTenableEnv(se,onProgress)); }
       catch(err2){ reject(err2); }
       return;
     }
     w.onmessage=function(ev){
+      if(ev.data&&ev.data.kind==='progress'){ if(onProgress) onProgress(ev.data.progress); return; }
       w.terminate();
       if(ev.data&&ev.data.ok) resolve(ev.data.env);
       else reject(new Error((ev.data&&ev.data.error)||('Failed to parse "'+se.name+'".')));
@@ -1426,7 +1677,9 @@ function generateDashboardAsync(){
   setup.envs.forEach(function(se,i){
     chain=chain.then(function(){
       setBuildProgress(done/total,'Parsing "'+se.name+'"…');
-      return buildEnvAsync(se).then(function(env){
+      return buildEnvAsync(se,function(frac){
+        setBuildProgress((done+frac)/total,'Parsing "'+se.name+'"… '+Math.round(frac*100)+'%');
+      }).then(function(env){
         envs[i]=env; done++;
         setBuildProgress(done/total,done<total?('Parsed "'+se.name+'"'):'Finishing up…');
       });
@@ -1530,7 +1783,7 @@ function currentConfig(){
            awsDedup:awsDedup, reportEnvOff:reportEnvOff,
            searches:searches, sortState:sortState, view:currentView, reportMode:reportMode,
            repoCols:repoCols, assetCols:assetCols, nsCols:nsCols, imgCols:imgCols, compCols:compCols,
-           acctCols:acctCols, liveCols:liveCols, dormCols:dormCols,
+           acctCols:acctCols, liveCols:liveCols, dormCols:dormCols, acctinvCols:acctinvCols,
            repDensCols:repDensCols, repEolCols:repEolCols,
            minAssetsRepo:minAssetsRepo, minAssetsReport:minAssetsReport, showLinks:showLinks,
            theme:document.documentElement.getAttribute('data-theme') };
@@ -1553,6 +1806,7 @@ function applyConfig(c){
   if(!sortState.acct) sortState.acct={key:'liveDensity',dir:'desc'};
   if(!sortState.live) sortState.live={key:'crit',dir:'desc'};
   if(!sortState.dorm) sortState.dorm={key:'dormantCrit',dir:'desc'};
+  if(!sortState.acctinv) sortState.acctinv={key:'critical',dir:'desc'};
   if(c.view)         currentView=c.view;
   if(c.reportMode)   reportMode=c.reportMode;
   if(c.repoCols)     repoCols=c.repoCols;
@@ -1563,6 +1817,7 @@ function applyConfig(c){
   if(c.acctCols)     acctCols=c.acctCols;
   if(c.liveCols)     liveCols=c.liveCols;
   if(c.dormCols)     dormCols=c.dormCols;
+  if(c.acctinvCols)  acctinvCols=c.acctinvCols;
   if(c.repDensCols)  repDensCols=c.repDensCols;
   if(c.repEolCols)   repEolCols=c.repEolCols;
   if(repDensCols.env===undefined) repDensCols.env=true;
@@ -1583,7 +1838,7 @@ function syncMinInputs(){
   var b=document.getElementById('repcog-min'); if(b) b.value=minAssetsReport||0;
 }
 function syncSearchInputs(){
-  var m=[['repo-search','repo'],['asset-search','asset'],['rep-search','rep'],['comp-search','comp']];
+  var m=[['repo-search','repo'],['asset-search','asset'],['rep-search','rep'],['comp-search','comp'],['acctinv-search','acctinv']];
   for(var i=0;i<m.length;i++){
     var el=document.getElementById(m[i][0]); if(!el) continue;
     el.value=searches[m[i][1]]||'';
@@ -1620,7 +1875,9 @@ function buildEnvMenu(){
     }); })(bs[i]);
   }
   var ae=activeEnv();
-  document.getElementById('hd-env-val').textContent=ae?ae.name:'—';
+  var evEl=document.getElementById('hd-env-val');
+  evEl.textContent=ae?ae.name:'—';
+  evEl.title=ae?ae.name:'';
 }
 function setEnvScope(id){
   if(envScope===id) return;
@@ -1713,7 +1970,10 @@ function buildScopeMenu(){
     }); })(acts[k]);
   }
   var n=setSize(breakdownSel);
-  document.getElementById('hd-scope-val').textContent=(ownerScope||'All')+(n?' \u00b7 '+n+' shown':'');
+  var scEl=document.getElementById('hd-scope-val');
+  var scVal=(ownerScope||'All')+(n?' \u00b7 '+n+' shown':'');
+  scEl.textContent=scVal;
+  scEl.title=scVal;
 }
 
 // ══════════ COLUMN MENUS ══════════
@@ -1738,6 +1998,8 @@ var LIVE_COL_DEFS=[ {k:'kind',label:'Type',cls:''},{k:'account',label:'Account',
   {k:'crit',label:'Critical Vulns',cls:'t-crit'} ];
 var DORM_COL_DEFS=[ {k:'name',label:'Name',cls:''},{k:'owner',label:'Owner',cls:''},{k:'dormantImgs',label:'Dormant Images',cls:''},
   {k:'dormantCrit',label:'Dormant Crits',cls:'t-crit'},{k:'avg',label:'Avg Crit/Dormant Image',cls:'t-crit'} ];
+var ACCTINV_COL_DEFS=[ {k:'name',label:'Account Name',cls:''},{k:'coverage',label:'Inspector Coverage',cls:''},
+  {k:'critical',label:'Critical',cls:'t-crit'},{k:'high',label:'High',cls:'t-high'},{k:'all',label:'All',cls:''} ];
 var REP_DENS_DEFS=[ {k:'env',label:'Environment',cls:''},{k:'owner',label:'Owner',cls:''},{k:'assets',label:'Assets',cls:''},
   {k:'crit',label:'Criticals',cls:'t-crit'},{k:'avg',label:'Avg Crit/Asset',cls:'t-crit'} ];
 var REP_EOL_DEFS=[ {k:'env',label:'Environment',cls:''},{k:'owner',label:'Owner',cls:''},{k:'assets',label:'Assets',cls:''},
@@ -1784,6 +2046,7 @@ function buildColMenus(){
     buildToggleList('rcog-cols',NS_COL_DEFS,nsCols,function(){ renderLeftTable(); });
     buildToggleList('acog-cols',IMG_COL_DEFS,imgCols,function(){ renderRightTable(); });
     buildToggleList('ccog-cols',COMP_COL_DEFS,compCols,function(){ renderCompTable(); });
+    syncAcctInvPanel();
   } else if(isAws()){
     var awsEnv=activeEnv();
     var acctDefs=ACCT_COL_DEFS.filter(function(d){
@@ -1798,10 +2061,13 @@ function buildColMenus(){
       return true;
     });
     buildToggleList('ccog-cols',dormDefs,dormCols,function(){ renderCompTable(); });
+    if(awsEnv&&awsEnv.hasAcctInventory) buildToggleList('aicog-cols',ACCTINV_COL_DEFS,acctinvCols,function(){ renderAcctInvTable(); });
     syncDedupUI();
+    syncAcctInvPanel();
   } else {
     buildToggleList('rcog-cols',REPO_COL_DEFS,repoCols,function(){ renderLeftTable(); });
     buildToggleList('acog-cols',ASSET_COL_DEFS,assetCols,function(){ renderRightTable(); });
+    syncAcctInvPanel();
   }
   buildReportColMenu();
 }
@@ -1988,14 +2254,14 @@ function awsCompute(env,acctSet){
   var liveAssets=[], dormantAssets=[];
   Object.keys(env.ec2Account).forEach(function(id){
     var a=env.ec2Account[id]; if(!acctSet[a]) return;
-    var crit=setSize(env.ec2Cves[id]||{});
+    var crit=awsCritOf(env.ec2Cves,env.ec2CritCount,id);
     var ag=acct(a); ag.ec2++; ag.ec2Crit+=crit;
     liveAssets.push({ name:id, kind:'EC2', account:a, accountLabel:acctDisplay(a), crit:crit });
   });
   Object.keys(env.imgAccount).forEach(function(id){
     var a=env.imgAccount[id]; if(!acctSet[a]) return;
     if(awsInspectorImgExcluded(env,id)) return; // same image counted from EKS instead
-    var crit=setSize(env.imgCves[id]||{});
+    var crit=awsCritOf(env.imgCves,env.imgCritCount,id);
     var nm=env.imgName[id]||id;
     var ag=acct(a);
     if((env.imgInUse[id]||0)>0){ ag.liveImgs++; ag.liveCrit+=crit; liveAssets.push({ name:nm, kind:'Image', account:a, accountLabel:acctDisplay(a), crit:crit }); }
@@ -2043,7 +2309,7 @@ function applyMinAssets(list,min,key){
 
 // ══════════ ORCHESTRATION ══════════
 function renderAll(){
-  if(!D.aggMode){ renderStats(); renderLeftTable(); renderRightTable(); renderCompTable(); }
+  if(!D.aggMode){ renderStats(); renderLeftTable(); renderRightTable(); renderCompTable(); renderAcctInvTable(); }
   renderLinks(); renderReportView(); updateExportNote();
 }
 function setView(v){
@@ -2077,7 +2343,7 @@ function ownerBreakdownHTML(metric,base){
     else if(metric==='eol') val=s.eol+(s.eol>0?' ('+(s.n?Math.round(s.eol/s.n*100):0)+'%)':'');
     else if(metric==='crit') val=s.crit;
     else val=s.n?s.avg.toFixed(2):'0.00';
-    rows.push({ avg:s.avg, html:'<div class="owner-stat-row"><button class="owner-stat-btn" onclick="jumpToOwner(\''+esc(o.owner).replace(/'/g,"\\'")+'\')">'+esc(o.owner)+'</button><span class="owner-stat-val">'+val+'</span></div>' });
+    rows.push({ avg:s.avg, html:'<div class="owner-stat-row"><button class="owner-stat-btn" title="'+esc(o.owner)+'" onclick="jumpToOwner(\''+esc(o.owner).replace(/'/g,"\\'")+'\')">'+esc(o.owner)+'</button><span class="owner-stat-val">'+val+'</span></div>' });
   });
   rows.sort(function(a,b){ return b.avg-a.avg; });
   return '<div class="stat-owner-breakdown">'+rows.map(function(r){return r.html;}).join('')+'</div>';
@@ -2094,7 +2360,7 @@ function rhacsBreakdownHTML(metric){
     else if(metric==='imgs') val=v.imgs;
     else if(metric==='crit') val=v.crit;
     else val=v.imgs?v.avg.toFixed(2):'0.00';
-    rows.push({ avg:v.avg, html:'<div class="owner-stat-row"><button class="owner-stat-btn" onclick="jumpToOwner(\''+esc(o.owner).replace(/'/g,"\\'")+'\')">'+esc(o.owner)+'</button><span class="owner-stat-val">'+val+'</span></div>' });
+    rows.push({ avg:v.avg, html:'<div class="owner-stat-row"><button class="owner-stat-btn" title="'+esc(o.owner)+'" onclick="jumpToOwner(\''+esc(o.owner).replace(/'/g,"\\'")+'\')">'+esc(o.owner)+'</button><span class="owner-stat-val">'+val+'</span></div>' });
   });
   rows.sort(function(a,b){ return b.avg-a.avg; });
   return '<div class="stat-owner-breakdown">'+rows.map(function(r){return r.html;}).join('')+'</div>';
@@ -2109,10 +2375,10 @@ function awsBreakdownHTML(metric){
     var acctSet=awsAccountSet(env,s,setSize(repoFilters)?repoFilters:null);
     var v=awsCompute(env,acctSet).stats, val, sortVal;
     if(metric==='ec2'){ val=v.ec2; sortVal=v.ec2; }
-    else if(metric==='liveImgs'){ val=v.liveImgs; sortVal=v.liveImgs; }
+    else if(metric==='liveImgs'){ val=v.liveImgs+v.eksImages; sortVal=val; }
     else if(metric==='crit'){ val=v.crit; sortVal=v.crit; }
-    else { val=(v.ec2+v.liveImgs)?v.density.toFixed(2):'0.00'; sortVal=v.density; }
-    rows.push({ avg:sortVal, html:'<div class="owner-stat-row"><button class="owner-stat-btn" onclick="jumpToOwner(\''+esc(o.owner).replace(/'/g,"\\'")+'\')">'+esc(o.owner)+'</button><span class="owner-stat-val">'+val+'</span></div>' });
+    else { val=(v.ec2+v.liveImgs+v.eksImages)?v.density.toFixed(2):'0.00'; sortVal=v.density; }
+    rows.push({ avg:sortVal, html:'<div class="owner-stat-row"><button class="owner-stat-btn" title="'+esc(o.owner)+'" onclick="jumpToOwner(\''+esc(o.owner).replace(/'/g,"\\'")+'\')">'+esc(o.owner)+'</button><span class="owner-stat-val">'+val+'</span></div>' });
   });
   rows.sort(function(a,b){ return b.avg-a.avg; });
   return '<div class="stat-owner-breakdown">'+rows.map(function(r){return r.html;}).join('')+'</div>';
@@ -2153,9 +2419,8 @@ function renderStats(){
         '<div class="stat-sub">across '+sa.accountCount+' account'+(sa.accountCount===1?'':'s')+'</div></div>'+
         awsBreakdownHTML('ec2')+'</div></div>'+
       '<div class="stat-card c-assets">'+fb+'<div class="stat-card-inner"><div class="stat-card-main">'+
-        '<div class="stat-label">Total Live Images</div><div class="stat-value">'+sa.liveImgs+'</div>'+
-        '<div class="stat-sub">'+sa.dormantImgs+' dormant image'+(sa.dormantImgs===1?'':'s')+' not shown here'+
-          (sa.eksImages?' &middot; +'+sa.eksImages+' EKS image'+(sa.eksImages===1?'':'s')+' counted below':'')+'</div></div>'+
+        '<div class="stat-label">Total Live Images</div><div class="stat-value">'+(sa.liveImgs+sa.eksImages)+'</div>'+
+        '<div class="stat-sub">'+sa.dormantImgs+' dormant image'+(sa.dormantImgs===1?'':'s')+' not shown here</div></div>'+
         awsBreakdownHTML('liveImgs')+'</div></div>'+
       '<div class="stat-card c-crit">'+fb+'<div class="stat-card-inner"><div class="stat-card-main">'+
         '<div class="stat-label">Critical Vulns (Live Assets)</div><div class="stat-value">'+sa.crit+'</div>'+
@@ -2245,8 +2510,8 @@ function renderRepoTable(){
   data.forEach(function(r){ if(r.avg>mA)mA=r.avg; if(r.eolPct>mP)mP=r.eolPct; });
   tb.innerHTML=data.map(function(r){
     var tds=cols.map(function(c){
-      if(c.k==='repo')   return '<td class="name-cell left">'+(q?highlight(r.repo,q):esc(r.repo))+'</td>';
-      if(c.k==='owner')  return '<td class="owner-cell left">'+(q?highlight(r.owner||'',q):esc(r.owner||''))+'</td>';
+      if(c.k==='repo')   return '<td class="name-cell left" title="'+esc(r.repo)+'">'+(q?highlight(r.repo,q):esc(r.repo))+'</td>';
+      if(c.k==='owner')  return '<td class="owner-cell left" title="'+esc(r.owner||'')+'">'+(q?highlight(r.owner||'',q):esc(r.owner||''))+'</td>';
       if(c.k==='assets') return '<td class="assets-val">'+r.assets+'</td>';
       if(c.k==='eol')    return '<td class="'+(r.eol>0?'eol-val':'assets-val')+'">'+r.eol+'</td>';
       if(c.k==='eolPct') return '<td><div class="bar-wrap"><div class="mini-bar eolbar" style="width:'+Math.max(2,Math.round(r.eolPct/mP*40))+'px"></div><span class="eolpct-val">'+r.eolPct.toFixed(0)+'%</span></div></td>';
@@ -2270,9 +2535,9 @@ function renderNsTable(){
   var mA=0.001; data.forEach(function(r){ if(r.avg>mA)mA=r.avg; });
   tb.innerHTML=data.map(function(r){
     var tds=cols.map(function(c){
-      if(c.k==='ns')      return '<td class="name-cell left">'+(q?highlight(r.ns,q):esc(r.ns))+'</td>';
-      if(c.k==='owner')   return '<td class="owner-cell left">'+(q?highlight(r.owner||'',q):esc(r.owner||''))+'</td>';
-      if(c.k==='cluster') return '<td class="owner-cell left">'+(q?highlight(r.cluster||'',q):esc(r.cluster||''))+'</td>';
+      if(c.k==='ns')      return '<td class="name-cell left" title="'+esc(r.ns)+'">'+(q?highlight(r.ns,q):esc(r.ns))+'</td>';
+      if(c.k==='owner')   return '<td class="owner-cell left" title="'+esc(r.owner||'')+'">'+(q?highlight(r.owner||'',q):esc(r.owner||''))+'</td>';
+      if(c.k==='cluster') return '<td class="owner-cell left" title="'+esc(r.cluster||'')+'">'+(q?highlight(r.cluster||'',q):esc(r.cluster||''))+'</td>';
       if(c.k==='images')  return '<td class="assets-val">'+r.images+'</td>';
       if(c.k==='crit')    return '<td class="crit-val">'+r.crit+'</td>';
       return '<td><div class="bar-wrap"><div class="mini-bar" style="width:'+Math.max(2,Math.round(r.avg/mA*50))+'px"></div><span class="avg-val">'+r.avg.toFixed(2)+'</span></div></td>';
@@ -2310,9 +2575,9 @@ function renderAccountsTable(){
   var mD=0.001; data.forEach(function(r){ if(r.liveDensity>mD)mD=r.liveDensity; });
   tb.innerHTML=data.map(function(r){
     var tds=cols.map(function(c){
-      if(c.k==='account')     return '<td class="name-cell left">'+(q?highlight(r.account,q):esc(r.account))+'</td>';
-      if(c.k==='name')        return '<td class="owner-cell left">'+(q?highlight(r.name||'',q):esc(r.name||''))+'</td>';
-      if(c.k==='owner')       return '<td class="owner-cell left">'+(q?highlight(r.owner||'',q):esc(r.owner||''))+'</td>';
+      if(c.k==='account')     return '<td class="name-cell left" title="'+esc(r.account)+'">'+(q?highlight(r.account,q):esc(r.account))+'</td>';
+      if(c.k==='name')        return '<td class="owner-cell left" title="'+esc(r.name||'')+'">'+(q?highlight(r.name||'',q):esc(r.name||''))+'</td>';
+      if(c.k==='owner')       return '<td class="owner-cell left" title="'+esc(r.owner||'')+'">'+(q?highlight(r.owner||'',q):esc(r.owner||''))+'</td>';
       if(c.k==='liveDensity') return '<td><div class="bar-wrap"><div class="mini-bar" style="width:'+Math.max(2,Math.round(r.liveDensity/mD*50))+'px"></div><span class="avg-val">'+r.liveDensity.toFixed(2)+'</span></div></td>';
       if(c.k==='ec2Crit'||c.k==='liveCrit'||c.k==='eksCrit') return '<td class="crit-val">'+r[c.k]+'</td>';
       return '<td class="assets-val">'+r[c.k]+'</td>';
@@ -2433,7 +2698,7 @@ function renderLiveTable(){
     return '<tr>'+cols.map(function(c){
       if(c.k==='name')    return '<td class="name-cell left" title="'+esc(a.name)+'">'+(q?highlight(a.name,q):esc(a.name))+'</td>';
       if(c.k==='kind')    return '<td><span class="repo-tag">'+esc(a.kind)+'</span></td>';
-      if(c.k==='account') return '<td class="owner-cell left">'+(q?highlight(a.accountLabel||a.account||'',q):esc(a.accountLabel||a.account||''))+'</td>';
+      if(c.k==='account') return '<td class="owner-cell left" title="'+esc(a.accountLabel||a.account||'')+'">'+(q?highlight(a.accountLabel||a.account||'',q):esc(a.accountLabel||a.account||''))+'</td>';
       return '<td><div class="bar-wrap"><div class="mini-bar" style="width:'+Math.max(2,Math.round(a.crit/mC*45))+'px"></div><span class="crit-val">'+a.crit+'</span></div></td>';
     }).join('')+'</tr>';
   };
@@ -2476,14 +2741,66 @@ function renderDormantTable(){
   var mD=0.001; data.forEach(function(r){ if(r.avg>mD) mD=r.avg; });
   tb.innerHTML=data.map(function(r){
     return '<tr>'+cols.map(function(c){
-      if(c.k==='account') return '<td class="name-cell left">'+(q?highlight(r.account,q):esc(r.account))+'</td>';
-      if(c.k==='name')    return '<td class="owner-cell left">'+(q?highlight(r.name||'',q):esc(r.name||''))+'</td>';
-      if(c.k==='owner')   return '<td class="owner-cell left">'+(q?highlight(r.owner||'',q):esc(r.owner||''))+'</td>';
+      if(c.k==='account') return '<td class="name-cell left" title="'+esc(r.account)+'">'+(q?highlight(r.account,q):esc(r.account))+'</td>';
+      if(c.k==='name')    return '<td class="owner-cell left" title="'+esc(r.name||'')+'">'+(q?highlight(r.name||'',q):esc(r.name||''))+'</td>';
+      if(c.k==='owner')   return '<td class="owner-cell left" title="'+esc(r.owner||'')+'">'+(q?highlight(r.owner||'',q):esc(r.owner||''))+'</td>';
       if(c.k==='dormantCrit') return '<td class="crit-val">'+r.dormantCrit+'</td>';
       if(c.k==='avg') return '<td><div class="bar-wrap"><div class="mini-bar" style="width:'+Math.max(2,Math.round(r.avg/mD*50))+'px"></div><span class="avg-val">'+r.avg.toFixed(2)+'</span></div></td>';
       return '<td class="assets-val">'+r.dormantImgs+'</td>';
     }).join('')+'</tr>';
   }).join('');
+}
+// ══════════ ACCOUNT INVENTORY (AWS "targeted CSVs" style only) ══════════
+// A standalone, verbatim view of the optional Account inventory CSV — it
+// does not feed into the Accounts/Live Assets/Dormant tables' totals at
+// all, it just displays what that file reported for each account.
+function syncAcctInvPanel(){
+  var env=activeEnv();
+  var show=isAws()&&!!(env&&env.hasAcctInventory);
+  var p=document.getElementById('acctinv-panel'); if(p) p.style.display=show?'':'none';
+}
+function acctInvVisibleCols(){
+  var o=[{k:'account',label:'Account',left:true}];
+  if(acctinvCols.name) o.push({k:'name',label:'Account Name',left:true});
+  if(acctinvCols.coverage) o.push({k:'coverage',label:'Inspector Coverage'});
+  if(acctinvCols.critical) o.push({k:'critical',label:'Critical'});
+  if(acctinvCols.high) o.push({k:'high',label:'High'});
+  if(acctinvCols.all) o.push({k:'all',label:'All'});
+  return o;
+}
+function renderAcctInvTable(){
+  var th=document.getElementById('acctinv-thead'); if(!th) return;
+  var env=activeEnv();
+  var cols=acctInvVisibleCols();
+  th.innerHTML=headHTML(cols,sortState.acctinv);
+  wireHead(th,sortState.acctinv,['account','name','coverage'],renderAcctInvTable);
+  var data=((env&&env.acctInventory)||[]).slice();
+  var q=(searches.acctinv||'').toLowerCase();
+  if(q) data=data.filter(function(r){ return r.account.toLowerCase().indexOf(q)!==-1||(r.name||'').toLowerCase().indexOf(q)!==-1; });
+  data.sort(makeSorter(sortState.acctinv.key,sortState.acctinv.dir));
+  var tb=document.getElementById('acctinv-tbody');
+  if(!data.length){ tb.innerHTML='<tr><td colspan="'+cols.length+'" class="empty-state">No accounts match the current filters</td></tr>'; return; }
+  tb.innerHTML=data.map(function(r){
+    return '<tr>'+cols.map(function(c){
+      if(c.k==='account') return '<td class="name-cell left" title="'+esc(r.account)+'">'+(q?highlight(r.account,q):esc(r.account))+'</td>';
+      if(c.k==='name')    return '<td class="owner-cell left" title="'+esc(r.name||'')+'">'+(q?highlight(r.name||'',q):esc(r.name||''))+'</td>';
+      if(c.k==='coverage') return '<td>'+esc(r.coverage||'')+'</td>';
+      if(c.k==='critical') return '<td class="crit-val">'+r.critical+'</td>';
+      if(c.k==='high')     return '<td class="high-val">'+r.high+'</td>';
+      return '<td class="assets-val">'+r.all+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+}
+function exportAcctInvCSV(){
+  var env=activeEnv();
+  var cols=acctInvVisibleCols();
+  var data=((env&&env.acctInventory)||[]).slice();
+  var q=(searches.acctinv||'').toLowerCase();
+  if(q) data=data.filter(function(r){ return r.account.toLowerCase().indexOf(q)!==-1||(r.name||'').toLowerCase().indexOf(q)!==-1; });
+  data.sort(makeSorter(sortState.acctinv.key,sortState.acctinv.dir));
+  var h=cols.map(function(c){ return c.label; });
+  var rows=data.map(function(r){ return cols.map(function(c){ return r[c.k]; }); });
+  downloadCSV(tableToCSV(h,rows),'account-inventory-'+scopeTag()+'.csv');
 }
 function renderCompTable(){
   if(isAws()){ renderDormantTable(); return; }
@@ -2551,7 +2868,7 @@ function updateChips(){
   var names=Object.keys(repoFilters);
   row.classList.toggle('visible',names.length>0);
   el.innerHTML=names.map(function(n){
-    return '<span class="filter-chip" data-repo="'+esc(n)+'"><span class="filter-chip-name">'+esc(n)+'</span><button class="filter-chip-x">&#10005;</button></span>';
+    return '<span class="filter-chip" data-repo="'+esc(n)+'"><span class="filter-chip-name" title="'+esc(n)+'">'+esc(n)+'</span><button class="filter-chip-x">&#10005;</button></span>';
   }).join('');
   var cs=el.querySelectorAll('.filter-chip');
   for(var i=0;i<cs.length;i++){
@@ -2687,9 +3004,9 @@ function renderReportTable(){
   tb.innerHTML=data.map(function(r,i){
     return '<tr>'+cols.map(function(c){
       if(c.k==='rank')   return '<td class="rank-cell left">'+(i+1)+'</td>';
-      if(c.k==='name')   return '<td class="name-cell left">'+(q?highlight(r.name,q):esc(r.name))+'</td>';
-      if(c.k==='env')    return '<td class="owner-cell left">'+(q?highlight(r.env||'',q):esc(r.env||''))+'</td>';
-      if(c.k==='owner')  return '<td class="owner-cell left">'+esc(r.owner||'')+'</td>';
+      if(c.k==='name')   return '<td class="name-cell left" title="'+esc(r.name)+'">'+(q?highlight(r.name,q):esc(r.name))+'</td>';
+      if(c.k==='env')    return '<td class="owner-cell left" title="'+esc(r.env||'')+'">'+(q?highlight(r.env||'',q):esc(r.env||''))+'</td>';
+      if(c.k==='owner')  return '<td class="owner-cell left" title="'+esc(r.owner||'')+'">'+esc(r.owner||'')+'</td>';
       if(c.k==='assets') return '<td class="assets-val">'+r.assets+'</td>';
       if(c.k==='crit')   return '<td class="crit-val">'+r.crit+'</td>';
       if(c.k==='eol'){
@@ -2871,17 +3188,19 @@ function scopeEnvForExport(env,nameSet,filters,isActive){
   }
   if(env.type==='aws'){
     var acctSet=awsAccountSet(env,nameSet,(filters&&isActive)?filters:null);
-    var ec2Account={}, ec2Cves={}, imgAccount={}, imgName={}, imgInUse={}, imgCves={}, imgDigest={};
+    var ec2Account={}, ec2Cves={}, ec2CritCount={}, imgAccount={}, imgName={}, imgInUse={}, imgCves={}, imgCritCount={}, imgDigest={};
     var eksAcctImg={}, eksAcctImgCrit={}, acctOwner={}, acctName={};
     Object.keys(env.ec2Account).forEach(function(id){
       if(!acctSet[env.ec2Account[id]]) return;
       ec2Account[id]=env.ec2Account[id];
       if(env.ec2Cves[id]) ec2Cves[id]=env.ec2Cves[id];
+      if(env.ec2CritCount&&env.ec2CritCount[id]!==undefined) ec2CritCount[id]=env.ec2CritCount[id];
     });
     Object.keys(env.imgAccount).forEach(function(id){
       if(!acctSet[env.imgAccount[id]]) return;
       imgAccount[id]=env.imgAccount[id]; imgName[id]=env.imgName[id]; imgInUse[id]=env.imgInUse[id];
       if(env.imgCves[id]) imgCves[id]=env.imgCves[id];
+      if(env.imgCritCount&&env.imgCritCount[id]!==undefined) imgCritCount[id]=env.imgCritCount[id];
       if(env.imgDigest&&env.imgDigest[id]!==undefined) imgDigest[id]=env.imgDigest[id];
     });
     Object.keys(env.eksAcctImg||{}).forEach(function(a){
@@ -2891,13 +3210,15 @@ function scopeEnvForExport(env,nameSet,filters,isActive){
     });
     Object.keys(env.acctOwner||{}).forEach(function(a){ if(acctSet[a]) acctOwner[a]=env.acctOwner[a]; });
     Object.keys(env.acctName||{}).forEach(function(a){ if(acctSet[a]) acctName[a]=env.acctName[a]; });
-    return { id:env.id, name:env.name, type:'aws', hasEOL:false,
-             ec2Account:ec2Account, ec2Cves:ec2Cves,
-             imgAccount:imgAccount, imgName:imgName, imgInUse:imgInUse, imgCves:imgCves, imgDigest:imgDigest,
+    var acctInventory=(env.acctInventory||[]).filter(function(r){ return acctSet[r.account]; });
+    return { id:env.id, name:env.name, type:'aws', hasEOL:false, awsImportStyle:env.awsImportStyle||'inspector',
+             ec2Account:ec2Account, ec2Cves:ec2Cves, ec2CritCount:ec2CritCount,
+             imgAccount:imgAccount, imgName:imgName, imgInUse:imgInUse, imgCves:imgCves, imgCritCount:imgCritCount, imgDigest:imgDigest,
              acctOwner:acctOwner, acctName:acctName, clusterAccount:{},
              eksAcctImg:eksAcctImg, eksAcctImgCrit:eksAcctImgCrit,
              overlapDigests:awsComputeOverlap(imgDigest,eksAcctImg),
-             hasMapping:env.hasMapping, hasEks:env.hasEks };
+             acctInventory:env.acctInventory?acctInventory:null,
+             hasMapping:env.hasMapping, hasEks:env.hasEks, hasAcctInventory:env.hasAcctInventory };
   }
   var nsSet=rhacsNsSet(env,nameSet,(filters&&isActive)?filters:null);
   var nsCluster={}, imgNs={}, imgCves={}, compIndex={};
@@ -3033,6 +3354,7 @@ wireDrop('hd-cog-btn','hd-cog-menu');
 wireDrop('rcog-btn','rcog-menu');
 wireDrop('acog-btn','acog-menu');
 wireDrop('ccog-btn','ccog-menu');
+wireDrop('aicog-btn','aicog-menu');
 wireDrop('repcog-btn','repcog-menu');
 
 (function(){
@@ -3046,6 +3368,7 @@ wireDrop('repcog-btn','repcog-menu');
   wireSearch('repo-search','repo',function(){ renderLeftTable(); });
   wireSearch('asset-search','asset',function(){ renderRightTable(); });
   wireSearch('comp-search','comp',function(){ renderCompTable(); });
+  wireSearch('acctinv-search','acctinv',function(){ renderAcctInvTable(); });
   wireSearch('rep-search','rep',function(){ renderReportTable(); });
 
   function wireMin(id, setter, rerender){
