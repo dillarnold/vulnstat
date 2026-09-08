@@ -168,8 +168,9 @@
   .tables-grid { display:grid; grid-template-columns:5fr 8fr; gap:18px; }
   .tables-grid.left-wide { grid-template-columns:8fr 5fr; }
   @media (max-width:1000px) { .tables-grid, .tables-grid.left-wide { grid-template-columns:1fr; } }
-  .table-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; display:flex; flex-direction:column; }
-  .table-panel-header { padding:9px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-shrink:0; }
+  .table-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); display:flex; flex-direction:column; }
+  .table-panel-header { padding:9px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-shrink:0;
+      border-radius:var(--radius) var(--radius) 0 0; }
   .table-panel-header h3 { font-family:var(--font-ui); font-weight:700; font-size:0.85rem; color:var(--txt-head); text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap; flex-shrink:0; }
   .hdr-search { position:relative; margin-left:auto; flex:1; max-width:230px; min-width:90px; }
   .hdr-search input { width:100%; background:var(--panel); border:1px solid var(--border2); border-radius:var(--radius); color:var(--txt); font-family:var(--font-mono); font-size:0.72rem; padding:5px 24px 5px 9px; outline:none; }
@@ -209,19 +210,21 @@
 
   /* ── TABLES ── */
   .data-table { width:100%; border-collapse:collapse; font-size:0.72rem; }
-  .data-table thead th { padding:8px 11px; text-align:left; font-size:0.60rem; text-transform:uppercase; letter-spacing:0.09em; color:var(--muted); background:var(--panel); border-bottom:1px solid var(--border); white-space:nowrap; user-select:none; }
+  .data-table thead th { padding:8px 11px; text-align:left; font-size:0.60rem; text-transform:uppercase; letter-spacing:0.09em; color:var(--muted); background:var(--panel); border-bottom:1px solid var(--border); white-space:nowrap; user-select:none;
+      position:sticky; top:0; z-index:3; }
   .data-table thead th.sortable { cursor:pointer; }
   .data-table thead th.sortable:hover { color:var(--txt); }
   .data-table thead th.sort-active { color:var(--th-color); }
-  .data-table thead th:not(.left) { text-align:right; }
+  .data-table thead th:not(.left) { text-align:center; }
+  .data-table thead th.right { text-align:right; }
   .data-table thead th.sortable .th-inner { display:inline-flex; align-items:center; gap:4px; }
-  .data-table thead th:not(.left) .th-inner { float:right; }
+  .data-table thead th.right .th-inner { float:right; }
   .sort-arrow { font-size:0.65rem; opacity:0.4; line-height:1; }
   .sort-active .sort-arrow { opacity:1; color:var(--med); }
   .data-table tbody tr { border-bottom:1px solid var(--border); }
   .data-table tbody tr:last-child { border-bottom:none; }
   .data-table tbody tr:hover { background:var(--row-hover); }
-  .data-table tbody td { padding:8px 11px; color:var(--txt); vertical-align:middle; text-align:right; }
+  .data-table tbody td { padding:8px 11px; color:var(--txt); vertical-align:middle; text-align:center; }
   .data-table tbody td.left { text-align:left; }
   .vs-spacer td { padding:0 !important; border:none !important; background:none !important; }
   .rank-cell { color:var(--muted2); font-size:0.66rem; width:30px; }
@@ -242,7 +245,8 @@
   .bar-wrap  { display:flex; align-items:center; gap:7px; justify-content:flex-end; }
   .mini-bar  { height:3px; border-radius:2px; background:var(--crit); min-width:2px; flex-shrink:0; }
   .mini-bar.eolbar { background:var(--eol); }
-  .table-scroll { max-height:400px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--border2) transparent; flex:1; }
+  .table-scroll { max-height:400px; overflow:auto; scrollbar-width:thin; scrollbar-color:var(--border2) transparent; flex:1;
+      border-radius:0 0 var(--radius) var(--radius); }
   .table-scroll::-webkit-scrollbar { width:5px; }
   .table-scroll::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
   .empty-state { padding:38px; text-align:center; color:var(--muted); font-size:0.8rem; }
@@ -609,28 +613,6 @@
         <table class="data-table" id="comp-table"><thead><tr id="comp-thead"></tr></thead><tbody id="comp-tbody"></tbody></table>
       </div>
     </div>
-    <div class="table-panel" id="acctinv-panel" style="display:none">
-      <div class="table-panel-header">
-        <h3>Account Inventory</h3>
-        <div class="hdr-search">
-          <input id="acctinv-search" placeholder="Search" autocomplete="off">
-          <button class="clr" id="acctinv-search-clr" title="Clear">&#10005;</button>
-        </div>
-        <div class="col-cog-wrap">
-          <button class="col-cog-btn" id="aicog-btn" title="Table options">&#9881;</button>
-          <div class="col-cog-dropdown" id="aicog-menu">
-            <div class="col-cog-title">Columns</div>
-            <div class="col-toggle-list" id="aicog-cols"></div>
-            <hr class="col-cog-sep">
-            <div class="col-cog-title">Export</div>
-            <button class="col-csv-btn" onclick="exportAcctInvCSV()">&#8595; Export to CSV</button>
-          </div>
-        </div>
-      </div>
-      <div class="table-scroll">
-        <table class="data-table" id="acctinv-table"><thead><tr id="acctinv-thead"></tr></thead><tbody id="acctinv-tbody"></tbody></table>
-      </div>
-    </div>
     <div class="links-panel" id="links-panel">
       <div class="links-panel-header"><h3>Links</h3></div>
       <div class="links-list" id="links-list"></div>
@@ -745,22 +727,19 @@ var envScope=null;                       // id of the environment shown in Asset
 var ownerScope=null, breakdownSel={}, repoFilters={};
 var awsDedup={ exclusive:true, prefer:'eks' }; // duplicate-image handling between EKS scans and Inspector's ECR scan
 var reportEnvOff={}; // env ids excluded from Report View, e.g. {env3:true} — empty means every environment is included
-var searches={ repo:'', asset:'', rep:'', comp:'', acctinv:'' };
+var searches={ repo:'', asset:'', rep:'', comp:'' };
 var sortState={ repo:{key:'avg',dir:'desc'},  asset:{key:'critical',dir:'desc'},
                 ns:  {key:'avg',dir:'desc'},  img:  {key:'crit',dir:'desc'},
                 comp:{key:'critCves',dir:'desc'},
-                acct:{key:'liveDensity',dir:'desc'}, live:{key:'crit',dir:'desc'}, dorm:{key:'dormantCrit',dir:'desc'},
-                acctinv:{key:'critical',dir:'desc'} };
+                acct:{key:'liveDensity',dir:'desc'}, live:{key:'crit',dir:'desc'} };
 var currentView='asset', reportMode='density';
 var repoCols  = { owner:true, assets:true, eol:true, eolPct:true, crit:true, avg:true };
 var assetCols = { ip:true, repo:true, crit:true, high:false, med:false, low:false, eol:true, eolOS:true };
 var nsCols    = { owner:true, cluster:true, images:true, crit:true, avg:true };
 var imgCols   = { nsCount:true, crit:true, remediated:true };
 var compCols  = { images:true, critCves:true, resolved:true };
-var acctCols  = { name:true, owner:true, ec2:true, ec2Crit:true, liveImgs:true, liveCrit:true, eksImages:true, eksCrit:true, liveDensity:true };
-var liveCols  = { kind:true, account:true, crit:true };
-var dormCols  = { name:true, owner:true, dormantImgs:true, dormantCrit:true, avg:true };
-var acctinvCols = { name:true, coverage:true, critical:true, high:true, all:true };
+var acctCols  = { name:true, owner:true, coverage:true, ec2:true, ec2Crit:true, liveImgs:true, liveCrit:true, eksImages:true, eksCrit:true, liveDensity:true };
+var liveCols  = { kind:true, repo:true, account:true, crit:true };
 var repDensCols = { env:true, owner:false, assets:true, crit:true, avg:true };
 var repEolCols  = { env:true, owner:false, assets:true, eol:true, eolPct:true };
 var minAssetsRepo=0, minAssetsReport=0;
@@ -1373,6 +1352,10 @@ function awsImageName(resourceId,tag){
   var repo=m?m[1]:(resourceId||'(unknown)');
   return tag?(repo+':'+tag):repo;
 }
+function awsRepoFromResourceId(resId){
+  var m=/repository\/(.+?)\/sha256:/.exec(resId||'');
+  return m?m[1]:'';
+}
 // Normalizes a digest value for cross-file matching between Inspector's ARN
 // (…/sha256:<hex>) and the EKS export's raw image_digest field.
 function awsNormDigest(d){ return String(d||'').replace(/^sha256:/i,'').trim().toLowerCase(); }
@@ -1423,7 +1406,7 @@ function awsCritOf(cveMap,countMap,id){
 }
 function buildAwsEnv(se,onProgress){
   var ec2Account={}, ec2Cves={}, ec2CritCount={};
-  var imgAccount={}, imgName={}, imgInUse={}, imgCves={}, imgCritCount={}, imgDigest={};
+  var imgAccount={}, imgRepo={}, imgInUse={}, imgCves={}, imgCritCount={}, imgDigest={};
   var used=0;
   var targeted=se.awsImportStyle==='targeted';
   var fileList=targeted
@@ -1452,7 +1435,7 @@ function buildAwsEnv(se,onProgress){
       } else if(rtype==='AWS_ECR_CONTAINER_IMAGE'){
         used++;
         imgAccount[resId]=account;
-        if(imgName[resId]===undefined) imgName[resId]=awsImageName(resId,col(r,'Container Image Tags','container image tags'));
+        if(imgRepo[resId]===undefined) imgRepo[resId]=awsRepoFromResourceId(resId);
         var inUse=parseInt(col(r,'Image In Use Count','image in use count'))||0;
         if(imgInUse[resId]===undefined||inUse>imgInUse[resId]) imgInUse[resId]=inUse;
         if(sev==='CRITICAL'&&cve){ if(!imgCves[resId]) imgCves[resId]={}; imgCves[resId][cve]=1; }
@@ -1473,10 +1456,11 @@ function buildAwsEnv(se,onProgress){
         var resId=(repo||'')+'::'+(img||'');
         used++;
         imgAccount[resId]=col(r,'Account','account');
-        if(imgName[resId]===undefined){
-          var tag=col(r,'Image Tags','image tags');
-          imgName[resId]=(repo||img)+(tag?(':'+tag):'');
-        }
+        if(imgRepo[resId]===undefined) imgRepo[resId]=repo||'';
+        // The "Image" column is itself the digest identifier for this
+        // format (e.g. "sha256:…") — normalized the same way as Inspector's
+        // and EKS's digests, so overlap-dedup between sources works here too.
+        if(imgDigest[resId]===undefined&&img) imgDigest[resId]=awsNormDigest(img);
         var deployed=parseInt(col(r,'Deployed ECS Tasks/EKS Pods','deployed ecs tasks/eks pods'))||0;
         if(imgInUse[resId]===undefined||deployed>imgInUse[resId]) imgInUse[resId]=deployed;
         imgCritCount[resId]=parseInt(col(r,'Critical','critical'))||0;
@@ -1509,16 +1493,29 @@ function buildAwsEnv(se,onProgress){
     : 'No valid EC2 or ECR image rows found in "'+se.name+'" (AWS Inspector).');
 
   // ── Optional: account/owner/name/EKS-cluster mapping CSV ──
-  var acctOwner={}, acctName={}, clusterAccount={};
+  // Accounts whose Status column reads CLOSED are dropped entirely — from
+  // this map AND from every EC2/image/EKS/account-inventory entry attributed
+  // to them — since they're "not considered in use." Because EC2/image rows
+  // are parsed before this file, that removal happens as a filter pass at
+  // the very end, once every closed account is known.
+  var acctOwner={}, acctName={}, acctBranch={}, acctSection={}, acctWorkloadOwner={}, clusterAccount={}, closedAccounts={};
   if(se.files.mapping){
     var clusterKey;
     streamCSVSource(se.files.mapping,function(r){
       if(clusterKey===undefined) clusterKey=findColKeyContains(r,'eks cluster');
       var acctId=col(r,'Account ID','account id'); if(!acctId) return;
+      var status=col(r,'Status','status').toUpperCase();
+      if(status==='CLOSED'){ closedAccounts[acctId]=true; return; }
       var name=col(r,'Workload Account Name','workload account name');
       var owner=col(r,'Owner','owner','Division','division');
+      var branch=col(r,'Branch','branch');
+      var section=col(r,'Section','section');
+      var workloadOwner=col(r,'Workload Owner','workload owner');
       if(name) acctName[acctId]=name;
       if(owner) acctOwner[acctId]=owner;
+      if(branch) acctBranch[acctId]=branch;
+      if(section) acctSection[acctId]=section;
+      if(workloadOwner) acctWorkloadOwner[acctId]=workloadOwner;
       var clusterField=clusterKey?r[clusterKey]:'';
       if(clusterField){
         clusterField.split(',').forEach(function(c){
@@ -1566,14 +1563,53 @@ function buildAwsEnv(se,onProgress){
     },nextP());
   } else nextP()(1);
 
-  var overlapDigests=awsComputeOverlap(imgDigest,eksAcctImg);
+  // ── Consolidate + shrink for export ──
+  // Two things happen here, both purely about export size, not behavior:
+  // (1) the five parallel per-image maps (account/repo/inUse/cves/digest)
+  //     collapse into one map keyed once by resource id instead of five
+  //     times over — for a real Inspector export with hundreds of thousands
+  //     of long ARN-style resource ids, that alone is most of the win.
+  // (2) every per-resource CVE Set becomes a plain count. Nothing in this
+  //     app ever needs the individual CVE identifiers for AWS data (unlike
+  //     RHACS's Components table, which aggregates CVEs across images and
+  //     genuinely needs their identity) — only "how many critical findings"
+  //     — so keeping the actual CVE strings around was pure waste at scale.
+  var ec2s={}, images={};
+  Object.keys(ec2Account).forEach(function(id){
+    var acctId=ec2Account[id]; if(closedAccounts[acctId]) return;
+    ec2s[id]={ account:acctId, crit:awsCritOf(ec2Cves,ec2CritCount,id) };
+  });
+  Object.keys(imgAccount).forEach(function(id){
+    var acctId=imgAccount[id]; if(closedAccounts[acctId]) return;
+    images[id]={ account:acctId, repo:imgRepo[id]||'', inUse:imgInUse[id]||0,
+                 crit:awsCritOf(imgCves,imgCritCount,id), digest:imgDigest[id]||null };
+  });
+  var eksAcctImgOut={}, eksAcctImgCritOut={};
+  Object.keys(eksAcctImg).forEach(function(a){
+    if(closedAccounts[a]) return;
+    eksAcctImgOut[a]=eksAcctImg[a];
+    var critMap=eksAcctImgCrit[a]||{};
+    var countMap={};
+    Object.keys(critMap).forEach(function(d){ countMap[d]=setSize(critMap[d]); });
+    eksAcctImgCritOut[a]=countMap;
+  });
+  Object.keys(closedAccounts).forEach(function(a){
+    delete acctOwner[a]; delete acctName[a]; delete acctBranch[a]; delete acctSection[a]; delete acctWorkloadOwner[a];
+  });
+  var acctInventoryOut=targeted&&acctInventory?acctInventory.filter(function(r){ return !closedAccounts[r.account]; }):null;
+  var acctCoverage={};
+  if(acctInventoryOut) acctInventoryOut.forEach(function(r){ if(r.coverage) acctCoverage[r.account]=r.coverage; });
+
+  var imgDigestOut={};
+  Object.keys(images).forEach(function(id){ if(images[id].digest) imgDigestOut[id]=images[id].digest; });
+  var overlapDigests=awsComputeOverlap(imgDigestOut,eksAcctImgOut);
 
   return { id:se.id, name:se.name, type:'aws', hasEOL:false, awsImportStyle:se.awsImportStyle||'inspector',
-           ec2Account:ec2Account, ec2Cves:ec2Cves, ec2CritCount:ec2CritCount,
-           imgAccount:imgAccount, imgName:imgName, imgInUse:imgInUse, imgCves:imgCves, imgCritCount:imgCritCount, imgDigest:imgDigest,
-           acctOwner:acctOwner, acctName:acctName, clusterAccount:clusterAccount,
-           eksAcctImg:eksAcctImg, eksAcctImgCrit:eksAcctImgCrit, overlapDigests:overlapDigests,
-           acctInventory:targeted?acctInventory:null,
+           ec2s:ec2s, images:images,
+           acctOwner:acctOwner, acctName:acctName, acctBranch:acctBranch, acctSection:acctSection,
+           acctWorkloadOwner:acctWorkloadOwner, acctCoverage:acctCoverage, clusterAccount:clusterAccount,
+           eksAcctImg:eksAcctImgOut, eksAcctImgCrit:eksAcctImgCritOut, overlapDigests:overlapDigests,
+           acctInventory:acctInventoryOut,
            hasMapping:!!se.files.mapping, hasEks:!!se.files.eks,
            hasAcctInventory:targeted&&!!se.files.acctinv };
 }
@@ -1588,7 +1624,7 @@ function buildAwsEnv(se,onProgress){
 // .toString() output — one source of truth, two execution contexts.
 var WORKER_FN_LIST = [col, makeCSVStreamer, streamParseCSV, fileByteSize, streamCSVSource, makeMultiFileProgress,
   findColKey, findColKeyContains, setSize,
-  awsImageName, awsNormDigest, awsDigestFromResourceId, awsComputeOverlap, awsCritOf,
+  awsImageName, awsRepoFromResourceId, awsNormDigest, awsDigestFromResourceId, awsComputeOverlap, awsCritOf,
   buildTenableEnv, buildRhacsEnv, buildAwsEnv];
 var WORKER_ONMESSAGE = "\nself.onmessage = function(ev){\n" +
   "  var m = ev.data, se = m.se;\n" +
@@ -1783,7 +1819,7 @@ function currentConfig(){
            awsDedup:awsDedup, reportEnvOff:reportEnvOff,
            searches:searches, sortState:sortState, view:currentView, reportMode:reportMode,
            repoCols:repoCols, assetCols:assetCols, nsCols:nsCols, imgCols:imgCols, compCols:compCols,
-           acctCols:acctCols, liveCols:liveCols, dormCols:dormCols, acctinvCols:acctinvCols,
+           acctCols:acctCols, liveCols:liveCols,
            repDensCols:repDensCols, repEolCols:repEolCols,
            minAssetsRepo:minAssetsRepo, minAssetsReport:minAssetsReport, showLinks:showLinks,
            theme:document.documentElement.getAttribute('data-theme') };
@@ -1805,8 +1841,6 @@ function applyConfig(c){
   if(!sortState.comp) sortState.comp={key:'critCves',dir:'desc'};
   if(!sortState.acct) sortState.acct={key:'liveDensity',dir:'desc'};
   if(!sortState.live) sortState.live={key:'crit',dir:'desc'};
-  if(!sortState.dorm) sortState.dorm={key:'dormantCrit',dir:'desc'};
-  if(!sortState.acctinv) sortState.acctinv={key:'critical',dir:'desc'};
   if(c.view)         currentView=c.view;
   if(c.reportMode)   reportMode=c.reportMode;
   if(c.repoCols)     repoCols=c.repoCols;
@@ -1816,8 +1850,6 @@ function applyConfig(c){
   if(c.compCols)     compCols=c.compCols;
   if(c.acctCols)     acctCols=c.acctCols;
   if(c.liveCols)     liveCols=c.liveCols;
-  if(c.dormCols)     dormCols=c.dormCols;
-  if(c.acctinvCols)  acctinvCols=c.acctinvCols;
   if(c.repDensCols)  repDensCols=c.repDensCols;
   if(c.repEolCols)   repEolCols=c.repEolCols;
   if(repDensCols.env===undefined) repDensCols.env=true;
@@ -1838,7 +1870,7 @@ function syncMinInputs(){
   var b=document.getElementById('repcog-min'); if(b) b.value=minAssetsReport||0;
 }
 function syncSearchInputs(){
-  var m=[['repo-search','repo'],['asset-search','asset'],['rep-search','rep'],['comp-search','comp'],['acctinv-search','acctinv']];
+  var m=[['repo-search','repo'],['asset-search','asset'],['rep-search','rep'],['comp-search','comp']];
   for(var i=0;i<m.length;i++){
     var el=document.getElementById(m[i][0]); if(!el) continue;
     el.value=searches[m[i][1]]||'';
@@ -1901,10 +1933,8 @@ function syncEnvUI(){
   if(cl) cl.textContent = t==='rhacs'?'Namespace:': t==='aws'?'Account:':'Repo:';
   var mt=document.getElementById('rcog-min-title');
   if(mt) mt.textContent = t==='rhacs'?'Min images per namespace': t==='aws'?'Min live assets per account':'Min assets per repo';
-  var cp=document.getElementById('components-panel'); if(cp) cp.style.display=(t==='rhacs'||t==='aws')?'':'none';
+  var cp=document.getElementById('components-panel'); if(cp) cp.style.display=(t==='rhacs')?'':'none';
   var tg=document.getElementById('tables-grid'); if(tg) tg.classList.toggle('left-wide',t==='rhacs'||t==='aws');
-  var cpt=document.getElementById('comp-panel-title');
-  if(cpt) cpt.textContent = t==='aws'?'Dormant Images by Account':'Components with Critical Findings';
   syncDedupUI();
 }
 // Shows/hides and reflects state for the EKS/Inspector duplicate-image
@@ -1990,16 +2020,12 @@ var IMG_COL_DEFS=[ {k:'nsCount',label:'Namespaces',cls:''},{k:'crit',label:'Crit
   {k:'remediated',label:'Remediated if Patched',cls:'t-low'} ];
 var COMP_COL_DEFS=[ {k:'images',label:'Images',cls:''},{k:'critCves',label:'Critical CVEs',cls:'t-crit'},
   {k:'resolved',label:'Resolved if Patched',cls:'t-low'} ];
-var ACCT_COL_DEFS=[ {k:'name',label:'Name',cls:''},{k:'owner',label:'Owner',cls:''},{k:'ec2',label:'EC2s',cls:''},
-  {k:'ec2Crit',label:'EC2 Crits',cls:'t-crit'},{k:'liveImgs',label:'Live Images',cls:''},
-  {k:'liveCrit',label:'Live Image Crits',cls:'t-crit'},{k:'eksImages',label:'EKS Images',cls:''},
-  {k:'eksCrit',label:'EKS Crit Vulns',cls:'t-crit'},{k:'liveDensity',label:'Live Density',cls:'t-crit'} ];
-var LIVE_COL_DEFS=[ {k:'kind',label:'Type',cls:''},{k:'account',label:'Account',cls:''},
+var ACCT_COL_DEFS=[ {k:'name',label:'Name',cls:''},{k:'owner',label:'Owner',cls:''},{k:'coverage',label:'Inspector Coverage',cls:''},
+  {k:'ec2',label:'EC2s',cls:''},{k:'ec2Crit',label:'EC2 Crits',cls:'t-crit'},{k:'liveImgs',label:'ECR Images',cls:''},
+  {k:'liveCrit',label:'ECR Crits',cls:'t-crit'},{k:'eksImages',label:'EKS Images',cls:''},
+  {k:'eksCrit',label:'EKS Crit Vulns',cls:'t-crit'},{k:'liveDensity',label:'Vuln Density',cls:'t-crit'} ];
+var LIVE_COL_DEFS=[ {k:'repo',label:'Repository',cls:''},{k:'kind',label:'Type',cls:''},{k:'account',label:'Account',cls:''},
   {k:'crit',label:'Critical Vulns',cls:'t-crit'} ];
-var DORM_COL_DEFS=[ {k:'name',label:'Name',cls:''},{k:'owner',label:'Owner',cls:''},{k:'dormantImgs',label:'Dormant Images',cls:''},
-  {k:'dormantCrit',label:'Dormant Crits',cls:'t-crit'},{k:'avg',label:'Avg Crit/Dormant Image',cls:'t-crit'} ];
-var ACCTINV_COL_DEFS=[ {k:'name',label:'Account Name',cls:''},{k:'coverage',label:'Inspector Coverage',cls:''},
-  {k:'critical',label:'Critical',cls:'t-crit'},{k:'high',label:'High',cls:'t-high'},{k:'all',label:'All',cls:''} ];
 var REP_DENS_DEFS=[ {k:'env',label:'Environment',cls:''},{k:'owner',label:'Owner',cls:''},{k:'assets',label:'Assets',cls:''},
   {k:'crit',label:'Criticals',cls:'t-crit'},{k:'avg',label:'Avg Crit/Asset',cls:'t-crit'} ];
 var REP_EOL_DEFS=[ {k:'env',label:'Environment',cls:''},{k:'owner',label:'Owner',cls:''},{k:'assets',label:'Assets',cls:''},
@@ -2046,28 +2072,20 @@ function buildColMenus(){
     buildToggleList('rcog-cols',NS_COL_DEFS,nsCols,function(){ renderLeftTable(); });
     buildToggleList('acog-cols',IMG_COL_DEFS,imgCols,function(){ renderRightTable(); });
     buildToggleList('ccog-cols',COMP_COL_DEFS,compCols,function(){ renderCompTable(); });
-    syncAcctInvPanel();
   } else if(isAws()){
     var awsEnv=activeEnv();
     var acctDefs=ACCT_COL_DEFS.filter(function(d){
-      if(d.k==='name') return !!(awsEnv&&awsEnv.hasMapping);
+      if(d.k==='name') return !!(awsEnv&&(awsEnv.hasMapping||awsEnv.hasAcctInventory));
+      if(d.k==='coverage') return !!(awsEnv&&awsEnv.hasAcctInventory);
       if(d.k==='eksImages'||d.k==='eksCrit') return !!(awsEnv&&awsEnv.hasEks);
       return true;
     });
     buildToggleList('rcog-cols',acctDefs,acctCols,function(){ renderLeftTable(); });
     buildToggleList('acog-cols',LIVE_COL_DEFS,liveCols,function(){ renderRightTable(); });
-    var dormDefs=DORM_COL_DEFS.filter(function(d){
-      if(d.k==='name') return !!(awsEnv&&awsEnv.hasMapping);
-      return true;
-    });
-    buildToggleList('ccog-cols',dormDefs,dormCols,function(){ renderCompTable(); });
-    if(awsEnv&&awsEnv.hasAcctInventory) buildToggleList('aicog-cols',ACCTINV_COL_DEFS,acctinvCols,function(){ renderAcctInvTable(); });
     syncDedupUI();
-    syncAcctInvPanel();
   } else {
     buildToggleList('rcog-cols',REPO_COL_DEFS,repoCols,function(){ renderLeftTable(); });
     buildToggleList('acog-cols',ASSET_COL_DEFS,assetCols,function(){ renderRightTable(); });
-    syncAcctInvPanel();
   }
   buildReportColMenu();
 }
@@ -2206,8 +2224,8 @@ function rhacsView(){ // Owner scope + namespace filters
 // ownership (no scan data yet) still shows up.
 function awsAccountSet(env,nameSet,filterSet){
   var all={}, out={};
-  Object.keys(env.ec2Account).forEach(function(id){ all[env.ec2Account[id]]=true; });
-  Object.keys(env.imgAccount).forEach(function(id){ all[env.imgAccount[id]]=true; });
+  Object.keys(env.ec2s).forEach(function(id){ all[env.ec2s[id].account]=true; });
+  Object.keys(env.images).forEach(function(id){ all[env.images[id].account]=true; });
   Object.keys(env.eksAcctImg||{}).forEach(function(a){ all[a]=true; });
   Object.keys(env.acctOwner||{}).forEach(function(a){ all[a]=true; });
   Object.keys(all).forEach(function(a){
@@ -2222,7 +2240,7 @@ function awsAccountSet(env,nameSet,filterSet){
 // has chosen to count it from EKS only.
 function awsInspectorImgExcluded(env,resId){
   if(!awsDedup.exclusive||awsDedup.prefer!=='eks') return false;
-  var d=(env.imgDigest||{})[resId];
+  var d=env.images[resId]&&env.images[resId].digest;
   return !!(d&&(env.overlapDigests||{})[d]);
 }
 // Whether an EKS image (by raw digest) should be excluded because the same
@@ -2243,6 +2261,7 @@ function awsCompute(env,acctSet){
     if(!accounts[a]) accounts[a]={ account:a,
       owner:(ownerScope||(env.acctOwner&&env.acctOwner[a])||D.repoOwnerMap[a]||''),
       name:(env.acctName&&env.acctName[a])||'',
+      coverage:(env.acctCoverage&&env.acctCoverage[a])||'',
       ec2:0, ec2Crit:0, liveImgs:0, liveCrit:0, dormantImgs:0, dormantCrit:0, eksImages:0, eksCrit:0 };
     return accounts[a];
   }
@@ -2251,35 +2270,36 @@ function awsCompute(env,acctSet){
   // gets a row instead of silently disappearing.
   Object.keys(acctSet).forEach(function(a){ acct(a); });
   function acctDisplay(a){ return (env.acctName&&env.acctName[a])||a; }
-  var liveAssets=[], dormantAssets=[];
-  Object.keys(env.ec2Account).forEach(function(id){
-    var a=env.ec2Account[id]; if(!acctSet[a]) return;
-    var crit=awsCritOf(env.ec2Cves,env.ec2CritCount,id);
-    var ag=acct(a); ag.ec2++; ag.ec2Crit+=crit;
-    liveAssets.push({ name:id, kind:'EC2', account:a, accountLabel:acctDisplay(a), crit:crit });
+  var liveAssets=[];
+  Object.keys(env.ec2s).forEach(function(id){
+    var e=env.ec2s[id], a=e.account; if(!acctSet[a]) return;
+    var ag=acct(a); ag.ec2++; ag.ec2Crit+=e.crit;
+    liveAssets.push({ name:id, kind:'EC2', account:a, accountLabel:acctDisplay(a), repo:'', crit:e.crit });
   });
-  Object.keys(env.imgAccount).forEach(function(id){
-    var a=env.imgAccount[id]; if(!acctSet[a]) return;
+  Object.keys(env.images).forEach(function(id){
+    var im=env.images[id], a=im.account; if(!acctSet[a]) return;
     if(awsInspectorImgExcluded(env,id)) return; // same image counted from EKS instead
-    var crit=awsCritOf(env.imgCves,env.imgCritCount,id);
-    var nm=env.imgName[id]||id;
+    // Resource identity is always the image digest — never the repository
+    // name, which has its own column — falling back to the raw resource key
+    // only on the rare row where no digest could be extracted at all.
+    var nm=im.digest?('sha256:'+im.digest):id;
     var ag=acct(a);
-    if((env.imgInUse[id]||0)>0){ ag.liveImgs++; ag.liveCrit+=crit; liveAssets.push({ name:nm, kind:'Image', account:a, accountLabel:acctDisplay(a), crit:crit }); }
-    else { ag.dormantImgs++; ag.dormantCrit+=crit; dormantAssets.push({ name:nm, account:a, crit:crit }); }
+    if((im.inUse||0)>0){ ag.liveImgs++; ag.liveCrit+=im.crit; liveAssets.push({ name:nm, kind:'Image', account:a, accountLabel:acctDisplay(a), repo:im.repo||'', crit:im.crit }); }
+    else { ag.dormantImgs++; ag.dormantCrit+=im.crit; }
   });
   Object.keys(env.eksAcctImg||{}).forEach(function(a){
     if(!acctSet[a]) return;
     var ag=acct(a);
     Object.keys(env.eksAcctImg[a]).forEach(function(d){
       if(awsEksImgExcluded(env,d)) return; // same image counted from Inspector instead
-      var crit=setSize(((env.eksAcctImgCrit||{})[a]||{})[d]||{});
+      var crit=((env.eksAcctImgCrit||{})[a]||{})[d]||0;
       ag.eksImages++; ag.eksCrit+=crit;
-      liveAssets.push({ name:d, kind:'EKS Image', account:a, accountLabel:acctDisplay(a), crit:crit });
+      liveAssets.push({ name:'sha256:'+awsNormDigest(d), kind:'EKS Image', account:a, accountLabel:acctDisplay(a), repo:'', crit:crit });
     });
   });
   var accountsArr=Object.keys(accounts).map(function(k){
     var r=accounts[k], liveN=r.ec2+r.liveImgs+r.eksImages, liveCrit=r.ec2Crit+r.liveCrit+r.eksCrit;
-    return { account:r.account, owner:r.owner, name:r.name, ec2:r.ec2, ec2Crit:r.ec2Crit,
+    return { account:r.account, owner:r.owner, name:r.name, coverage:r.coverage, ec2:r.ec2, ec2Crit:r.ec2Crit,
              liveImgs:r.liveImgs, liveCrit:r.liveCrit, dormantImgs:r.dormantImgs, dormantCrit:r.dormantCrit,
              eksImages:r.eksImages, eksCrit:r.eksCrit,
              liveDensity: liveN?liveCrit/liveN:0 };
@@ -2288,7 +2308,7 @@ function awsCompute(env,acctSet){
   accountsArr.forEach(function(r){ totEc2+=r.ec2; totLiveImgs+=r.liveImgs; totCrit+=r.ec2Crit+r.liveCrit+r.eksCrit;
     totDormImgs+=r.dormantImgs; totDormCrit+=r.dormantCrit; totEksImages+=r.eksImages; totEksCrit+=r.eksCrit; });
   var liveN=totEc2+totLiveImgs+totEksImages;
-  return { accounts:accountsArr, liveAssets:liveAssets, dormantAssets:dormantAssets,
+  return { accounts:accountsArr, liveAssets:liveAssets,
     stats:{ ec2:totEc2, liveImgs:totLiveImgs, crit:totCrit, density:liveN?totCrit/liveN:0,
             dormantImgs:totDormImgs, dormantCrit:totDormCrit, eksImages:totEksImages, eksCrit:totEksCrit,
             accountCount:accountsArr.length } };
@@ -2309,7 +2329,7 @@ function applyMinAssets(list,min,key){
 
 // ══════════ ORCHESTRATION ══════════
 function renderAll(){
-  if(!D.aggMode){ renderStats(); renderLeftTable(); renderRightTable(); renderCompTable(); renderAcctInvTable(); }
+  if(!D.aggMode){ renderStats(); renderLeftTable(); renderRightTable(); renderCompTable(); }
   renderLinks(); renderReportView(); updateExportNote();
 }
 function setView(v){
@@ -2464,9 +2484,9 @@ function repoVisibleCols(){
   if(repoCols.owner&&D.hasOwners) o.push({k:'owner',label:'Owner',left:true});
   if(repoCols.assets) o.push({k:'assets',label:'Assets'});
   if(repoCols.eol&&envEOL) o.push({k:'eol',label:'EOL'});
-  if(repoCols.eolPct&&envEOL) o.push({k:'eolPct',label:'EOL %'});
+  if(repoCols.eolPct&&envEOL) o.push({k:'eolPct',label:'EOL %',right:true});
   if(repoCols.crit) o.push({k:'crit',label:'Crits'});
-  if(repoCols.avg) o.push({k:'avg',label:'Avg'});
+  if(repoCols.avg) o.push({k:'avg',label:'Avg',right:true});
   return o;
 }
 function nsVisibleCols(){
@@ -2475,13 +2495,13 @@ function nsVisibleCols(){
   if(nsCols.cluster) o.push({k:'cluster',label:'Cluster',left:true});
   if(nsCols.images) o.push({k:'images',label:'Images'});
   if(nsCols.crit) o.push({k:'crit',label:'Crits'});
-  if(nsCols.avg) o.push({k:'avg',label:'Avg Crit/Image'});
+  if(nsCols.avg) o.push({k:'avg',label:'Avg Crit/Image',right:true});
   return o;
 }
 function headHTML(cols,ss){
   return cols.map(function(c){
     var act=ss.key===c.k, ar=act?(ss.dir==='desc'?'\u2193':'\u2191'):'\u2195';
-    return '<th class="sortable'+(c.left?' left':'')+(act?' sort-active':'')+'" data-k="'+c.k+'"><span class="th-inner">'+c.label+' <span class="sort-arrow">'+ar+'</span></span></th>';
+    return '<th class="sortable'+(c.left?' left':'')+(c.right?' right':'')+(act?' sort-active':'')+'" data-k="'+c.k+'"><span class="th-inner">'+c.label+' <span class="sort-arrow">'+ar+'</span></span></th>';
   }).join('');
 }
 function wireHead(thEl,ss,strKeys,after){
@@ -2548,17 +2568,18 @@ function renderNsTable(){
 }
 function acctVisibleCols(){
   var env=activeEnv();
-  var hasMap=!!(env&&env.hasMapping), hasEks=!!(env&&env.hasEks);
+  var hasMap=!!(env&&env.hasMapping), hasEks=!!(env&&env.hasEks), hasAcctInv=!!(env&&env.hasAcctInventory);
   var o=[{k:'account',label:'Account',left:true}];
-  if(hasMap&&acctCols.name) o.push({k:'name',label:'Name',left:true});
+  if((hasMap||hasAcctInv)&&acctCols.name) o.push({k:'name',label:'Name',left:true});
   if(acctCols.owner) o.push({k:'owner',label:'Owner',left:true}); // AWS accounts always show an Owner column
+  if(hasAcctInv&&acctCols.coverage) o.push({k:'coverage',label:'Inspector Coverage'});
   if(acctCols.ec2) o.push({k:'ec2',label:'EC2s'});
   if(acctCols.ec2Crit) o.push({k:'ec2Crit',label:'EC2 Crits'});
-  if(acctCols.liveImgs) o.push({k:'liveImgs',label:'Live Images'});
-  if(acctCols.liveCrit) o.push({k:'liveCrit',label:'Live Image Crits'});
+  if(acctCols.liveImgs) o.push({k:'liveImgs',label:'ECR Images'});
+  if(acctCols.liveCrit) o.push({k:'liveCrit',label:'ECR Crits'});
   if(hasEks&&acctCols.eksImages) o.push({k:'eksImages',label:'EKS Images'});
   if(hasEks&&acctCols.eksCrit) o.push({k:'eksCrit',label:'EKS Crit Vulns'});
-  if(acctCols.liveDensity) o.push({k:'liveDensity',label:'Live Density'});
+  if(acctCols.liveDensity) o.push({k:'liveDensity',label:'Vuln Density',right:true});
   return o;
 }
 function renderAccountsTable(){
@@ -2578,6 +2599,7 @@ function renderAccountsTable(){
       if(c.k==='account')     return '<td class="name-cell left" title="'+esc(r.account)+'">'+(q?highlight(r.account,q):esc(r.account))+'</td>';
       if(c.k==='name')        return '<td class="owner-cell left" title="'+esc(r.name||'')+'">'+(q?highlight(r.name||'',q):esc(r.name||''))+'</td>';
       if(c.k==='owner')       return '<td class="owner-cell left" title="'+esc(r.owner||'')+'">'+(q?highlight(r.owner||'',q):esc(r.owner||''))+'</td>';
+      if(c.k==='coverage')    return '<td title="'+esc(r.coverage||'')+'">'+esc(r.coverage||'')+'</td>';
       if(c.k==='liveDensity') return '<td><div class="bar-wrap"><div class="mini-bar" style="width:'+Math.max(2,Math.round(r.liveDensity/mD*50))+'px"></div><span class="avg-val">'+r.liveDensity.toFixed(2)+'</span></div></td>';
       if(c.k==='ec2Crit'||c.k==='liveCrit'||c.k==='eksCrit') return '<td class="crit-val">'+r[c.k]+'</td>';
       return '<td class="assets-val">'+r[c.k]+'</td>';
@@ -2610,7 +2632,7 @@ function assetVisibleCols(){
 function imgVisibleCols(){
   var o=[{k:'image',label:'Image',left:true}];
   if(imgCols.nsCount) o.push({k:'nsCount',label:'Namespaces'});
-  if(imgCols.crit) o.push({k:'crit',label:'Crits'});
+  if(imgCols.crit) o.push({k:'crit',label:'Crits',right:true});
   if(imgCols.remediated) o.push({k:'remediated',label:'Remediated if Patched'});
   return o;
 }
@@ -2678,18 +2700,19 @@ function renderImgTable(){
 
 function liveVisibleCols(){
   var o=[{k:'name',label:'Resource',left:true}];
+  if(liveCols.repo) o.push({k:'repo',label:'Repository',left:true});
   if(liveCols.kind) o.push({k:'kind',label:'Type'});
   if(liveCols.account) o.push({k:'account',label:'Account',left:true});
-  if(liveCols.crit) o.push({k:'crit',label:'Critical Vulns'});
+  if(liveCols.crit) o.push({k:'crit',label:'Critical Vulns',right:true});
   return o;
 }
 function renderLiveTable(){
   var cols=liveVisibleCols(), th=document.getElementById('asset-thead');
   th.innerHTML=headHTML(cols,sortState.live);
-  wireHead(th,sortState.live,['name','kind','account'],renderLiveTable);
+  wireHead(th,sortState.live,['name','kind','repo','account'],renderLiveTable);
   var data=awsView().liveAssets.slice();
   var q=searches.asset.toLowerCase();
-  if(q) data=data.filter(function(a){ return (a.name||'').toLowerCase().indexOf(q)!==-1||(a.account||'').toLowerCase().indexOf(q)!==-1||(a.accountLabel||'').toLowerCase().indexOf(q)!==-1; });
+  if(q) data=data.filter(function(a){ return (a.name||'').toLowerCase().indexOf(q)!==-1||(a.account||'').toLowerCase().indexOf(q)!==-1||(a.accountLabel||'').toLowerCase().indexOf(q)!==-1||(a.repo||'').toLowerCase().indexOf(q)!==-1; });
   data.sort(makeSorter(sortState.live.key,sortState.live.dir));
   var tb=document.getElementById('asset-tbody');
   if(!data.length){ tb.innerHTML='<tr><td colspan="'+cols.length+'" class="empty-state">No live assets match the current filters</td></tr>'; vs.data=[]; return; }
@@ -2698,6 +2721,7 @@ function renderLiveTable(){
     return '<tr>'+cols.map(function(c){
       if(c.k==='name')    return '<td class="name-cell left" title="'+esc(a.name)+'">'+(q?highlight(a.name,q):esc(a.name))+'</td>';
       if(c.k==='kind')    return '<td><span class="repo-tag">'+esc(a.kind)+'</span></td>';
+      if(c.k==='repo')    return '<td class="owner-cell left" title="'+esc(a.repo||'')+'">'+(q?highlight(a.repo||'',q):esc(a.repo||''))+'</td>';
       if(c.k==='account') return '<td class="owner-cell left" title="'+esc(a.accountLabel||a.account||'')+'">'+(q?highlight(a.accountLabel||a.account||'',q):esc(a.accountLabel||a.account||''))+'</td>';
       return '<td><div class="bar-wrap"><div class="mini-bar" style="width:'+Math.max(2,Math.round(a.crit/mC*45))+'px"></div><span class="crit-val">'+a.crit+'</span></div></td>';
     }).join('')+'</tr>';
@@ -2713,97 +2737,7 @@ function compVisibleCols(){
   if(compCols.resolved) o.push({k:'resolved',label:'Resolved if Patched'});
   return o;
 }
-function dormVisibleCols(){
-  var env=activeEnv();
-  var hasMap=!!(env&&env.hasMapping);
-  var o=[{k:'account',label:'Account',left:true}];
-  if(hasMap&&dormCols.name) o.push({k:'name',label:'Name',left:true});
-  if(dormCols.owner) o.push({k:'owner',label:'Owner',left:true});
-  if(dormCols.dormantImgs) o.push({k:'dormantImgs',label:'Dormant Images'});
-  if(dormCols.dormantCrit) o.push({k:'dormantCrit',label:'Dormant Crits'});
-  if(dormCols.avg) o.push({k:'avg',label:'Avg Crit/Dormant Image'});
-  return o;
-}
-function renderDormantTable(){
-  var cols=dormVisibleCols(), th=document.getElementById('comp-thead');
-  if(!th) return;
-  th.innerHTML=headHTML(cols,sortState.dorm);
-  wireHead(th,sortState.dorm,['account','owner','name'],renderDormantTable);
-  var data=awsView().accounts.map(function(r){
-    return { account:r.account, owner:r.owner, name:r.name, dormantImgs:r.dormantImgs, dormantCrit:r.dormantCrit,
-             avg:r.dormantImgs?r.dormantCrit/r.dormantImgs:0 };
-  });
-  var q=searches.comp.toLowerCase();
-  if(q) data=data.filter(function(r){ return r.account.toLowerCase().indexOf(q)!==-1||(r.owner||'').toLowerCase().indexOf(q)!==-1||(r.name||'').toLowerCase().indexOf(q)!==-1; });
-  data.sort(makeSorter(sortState.dorm.key,sortState.dorm.dir));
-  var tb=document.getElementById('comp-tbody');
-  if(!data.length){ tb.innerHTML='<tr><td colspan="'+cols.length+'" class="empty-state">No accounts match the current filters</td></tr>'; return; }
-  var mD=0.001; data.forEach(function(r){ if(r.avg>mD) mD=r.avg; });
-  tb.innerHTML=data.map(function(r){
-    return '<tr>'+cols.map(function(c){
-      if(c.k==='account') return '<td class="name-cell left" title="'+esc(r.account)+'">'+(q?highlight(r.account,q):esc(r.account))+'</td>';
-      if(c.k==='name')    return '<td class="owner-cell left" title="'+esc(r.name||'')+'">'+(q?highlight(r.name||'',q):esc(r.name||''))+'</td>';
-      if(c.k==='owner')   return '<td class="owner-cell left" title="'+esc(r.owner||'')+'">'+(q?highlight(r.owner||'',q):esc(r.owner||''))+'</td>';
-      if(c.k==='dormantCrit') return '<td class="crit-val">'+r.dormantCrit+'</td>';
-      if(c.k==='avg') return '<td><div class="bar-wrap"><div class="mini-bar" style="width:'+Math.max(2,Math.round(r.avg/mD*50))+'px"></div><span class="avg-val">'+r.avg.toFixed(2)+'</span></div></td>';
-      return '<td class="assets-val">'+r.dormantImgs+'</td>';
-    }).join('')+'</tr>';
-  }).join('');
-}
-// ══════════ ACCOUNT INVENTORY (AWS "targeted CSVs" style only) ══════════
-// A standalone, verbatim view of the optional Account inventory CSV — it
-// does not feed into the Accounts/Live Assets/Dormant tables' totals at
-// all, it just displays what that file reported for each account.
-function syncAcctInvPanel(){
-  var env=activeEnv();
-  var show=isAws()&&!!(env&&env.hasAcctInventory);
-  var p=document.getElementById('acctinv-panel'); if(p) p.style.display=show?'':'none';
-}
-function acctInvVisibleCols(){
-  var o=[{k:'account',label:'Account',left:true}];
-  if(acctinvCols.name) o.push({k:'name',label:'Account Name',left:true});
-  if(acctinvCols.coverage) o.push({k:'coverage',label:'Inspector Coverage'});
-  if(acctinvCols.critical) o.push({k:'critical',label:'Critical'});
-  if(acctinvCols.high) o.push({k:'high',label:'High'});
-  if(acctinvCols.all) o.push({k:'all',label:'All'});
-  return o;
-}
-function renderAcctInvTable(){
-  var th=document.getElementById('acctinv-thead'); if(!th) return;
-  var env=activeEnv();
-  var cols=acctInvVisibleCols();
-  th.innerHTML=headHTML(cols,sortState.acctinv);
-  wireHead(th,sortState.acctinv,['account','name','coverage'],renderAcctInvTable);
-  var data=((env&&env.acctInventory)||[]).slice();
-  var q=(searches.acctinv||'').toLowerCase();
-  if(q) data=data.filter(function(r){ return r.account.toLowerCase().indexOf(q)!==-1||(r.name||'').toLowerCase().indexOf(q)!==-1; });
-  data.sort(makeSorter(sortState.acctinv.key,sortState.acctinv.dir));
-  var tb=document.getElementById('acctinv-tbody');
-  if(!data.length){ tb.innerHTML='<tr><td colspan="'+cols.length+'" class="empty-state">No accounts match the current filters</td></tr>'; return; }
-  tb.innerHTML=data.map(function(r){
-    return '<tr>'+cols.map(function(c){
-      if(c.k==='account') return '<td class="name-cell left" title="'+esc(r.account)+'">'+(q?highlight(r.account,q):esc(r.account))+'</td>';
-      if(c.k==='name')    return '<td class="owner-cell left" title="'+esc(r.name||'')+'">'+(q?highlight(r.name||'',q):esc(r.name||''))+'</td>';
-      if(c.k==='coverage') return '<td>'+esc(r.coverage||'')+'</td>';
-      if(c.k==='critical') return '<td class="crit-val">'+r.critical+'</td>';
-      if(c.k==='high')     return '<td class="high-val">'+r.high+'</td>';
-      return '<td class="assets-val">'+r.all+'</td>';
-    }).join('')+'</tr>';
-  }).join('');
-}
-function exportAcctInvCSV(){
-  var env=activeEnv();
-  var cols=acctInvVisibleCols();
-  var data=((env&&env.acctInventory)||[]).slice();
-  var q=(searches.acctinv||'').toLowerCase();
-  if(q) data=data.filter(function(r){ return r.account.toLowerCase().indexOf(q)!==-1||(r.name||'').toLowerCase().indexOf(q)!==-1; });
-  data.sort(makeSorter(sortState.acctinv.key,sortState.acctinv.dir));
-  var h=cols.map(function(c){ return c.label; });
-  var rows=data.map(function(r){ return cols.map(function(c){ return r[c.k]; }); });
-  downloadCSV(tableToCSV(h,rows),'account-inventory-'+scopeTag()+'.csv');
-}
 function renderCompTable(){
-  if(isAws()){ renderDormantTable(); return; }
   if(!isRhacs()) return;
   var cols=compVisibleCols(), th=document.getElementById('comp-thead');
   if(!th) return;
@@ -2969,13 +2903,13 @@ function reportVisibleCols(){
     if(repDensCols.owner&&ok) o.push({k:'owner',label:'Owner',left:true});
     if(repDensCols.assets) o.push({k:'assets',label:'Assets'});
     if(repDensCols.crit)   o.push({k:'crit',label:'Criticals'});
-    if(repDensCols.avg)    o.push({k:'avg',label:'Avg Crit/Asset'});
+    if(repDensCols.avg)    o.push({k:'avg',label:'Avg Crit/Asset',right:true});
   } else {
     if(repEolCols.env&&ev) o.push({k:'env',label:'Environment',left:true});
     if(repEolCols.owner&&ok) o.push({k:'owner',label:'Owner',left:true});
     if(repEolCols.assets) o.push({k:'assets',label:'Assets'});
     if(repEolCols.eol)    o.push({k:'eol',label:'EOL Assets'});
-    if(repEolCols.eolPct) o.push({k:'eolPct',label:'EOL %'});
+    if(repEolCols.eolPct) o.push({k:'eolPct',label:'EOL %',right:true});
   }
   return o;
 }
@@ -3122,22 +3056,6 @@ function exportAssetCSV(){
   downloadCSV(tableToCSV(h,rows),'assets-'+scopeTag()+'.csv');
 }
 function exportCompCSV(){
-  if(isAws()){
-    var cols3=dormVisibleCols();
-    var data3=awsView().accounts.map(function(r){
-      return { account:r.account, owner:r.owner, dormantImgs:r.dormantImgs, dormantCrit:r.dormantCrit,
-               avg:r.dormantImgs?r.dormantCrit/r.dormantImgs:0 };
-    });
-    var q3=searches.comp.toLowerCase();
-    if(q3) data3=data3.filter(function(r){ return r.account.toLowerCase().indexOf(q3)!==-1||(r.owner||'').toLowerCase().indexOf(q3)!==-1; });
-    data3.sort(makeSorter(sortState.dorm.key,sortState.dorm.dir));
-    var h3=cols3.map(function(c){ return c.label; });
-    var rows3=data3.map(function(r){ return cols3.map(function(c){
-      if(c.k==='avg') return r.avg.toFixed(2);
-      return r[c.k]; }); });
-    downloadCSV(tableToCSV(h3,rows3),'dormant-by-account-'+scopeTag()+'.csv');
-    return;
-  }
   if(!isRhacs()) return;
   var cols=compVisibleCols(), data=rhacsView().components.slice();
   var q=searches.comp.toLowerCase();
@@ -3188,20 +3106,15 @@ function scopeEnvForExport(env,nameSet,filters,isActive){
   }
   if(env.type==='aws'){
     var acctSet=awsAccountSet(env,nameSet,(filters&&isActive)?filters:null);
-    var ec2Account={}, ec2Cves={}, ec2CritCount={}, imgAccount={}, imgName={}, imgInUse={}, imgCves={}, imgCritCount={}, imgDigest={};
-    var eksAcctImg={}, eksAcctImgCrit={}, acctOwner={}, acctName={};
-    Object.keys(env.ec2Account).forEach(function(id){
-      if(!acctSet[env.ec2Account[id]]) return;
-      ec2Account[id]=env.ec2Account[id];
-      if(env.ec2Cves[id]) ec2Cves[id]=env.ec2Cves[id];
-      if(env.ec2CritCount&&env.ec2CritCount[id]!==undefined) ec2CritCount[id]=env.ec2CritCount[id];
+    var ec2s={}, images={}, eksAcctImg={}, eksAcctImgCrit={};
+    var acctOwner={}, acctName={}, acctBranch={}, acctSection={}, acctWorkloadOwner={}, acctCoverage={};
+    Object.keys(env.ec2s).forEach(function(id){
+      if(!acctSet[env.ec2s[id].account]) return;
+      ec2s[id]=env.ec2s[id];
     });
-    Object.keys(env.imgAccount).forEach(function(id){
-      if(!acctSet[env.imgAccount[id]]) return;
-      imgAccount[id]=env.imgAccount[id]; imgName[id]=env.imgName[id]; imgInUse[id]=env.imgInUse[id];
-      if(env.imgCves[id]) imgCves[id]=env.imgCves[id];
-      if(env.imgCritCount&&env.imgCritCount[id]!==undefined) imgCritCount[id]=env.imgCritCount[id];
-      if(env.imgDigest&&env.imgDigest[id]!==undefined) imgDigest[id]=env.imgDigest[id];
+    Object.keys(env.images).forEach(function(id){
+      if(!acctSet[env.images[id].account]) return;
+      images[id]=env.images[id];
     });
     Object.keys(env.eksAcctImg||{}).forEach(function(a){
       if(!acctSet[a]) return;
@@ -3210,11 +3123,17 @@ function scopeEnvForExport(env,nameSet,filters,isActive){
     });
     Object.keys(env.acctOwner||{}).forEach(function(a){ if(acctSet[a]) acctOwner[a]=env.acctOwner[a]; });
     Object.keys(env.acctName||{}).forEach(function(a){ if(acctSet[a]) acctName[a]=env.acctName[a]; });
+    Object.keys(env.acctBranch||{}).forEach(function(a){ if(acctSet[a]) acctBranch[a]=env.acctBranch[a]; });
+    Object.keys(env.acctSection||{}).forEach(function(a){ if(acctSet[a]) acctSection[a]=env.acctSection[a]; });
+    Object.keys(env.acctWorkloadOwner||{}).forEach(function(a){ if(acctSet[a]) acctWorkloadOwner[a]=env.acctWorkloadOwner[a]; });
+    Object.keys(env.acctCoverage||{}).forEach(function(a){ if(acctSet[a]) acctCoverage[a]=env.acctCoverage[a]; });
     var acctInventory=(env.acctInventory||[]).filter(function(r){ return acctSet[r.account]; });
+    var imgDigest={};
+    Object.keys(images).forEach(function(id){ if(images[id].digest) imgDigest[id]=images[id].digest; });
     return { id:env.id, name:env.name, type:'aws', hasEOL:false, awsImportStyle:env.awsImportStyle||'inspector',
-             ec2Account:ec2Account, ec2Cves:ec2Cves, ec2CritCount:ec2CritCount,
-             imgAccount:imgAccount, imgName:imgName, imgInUse:imgInUse, imgCves:imgCves, imgCritCount:imgCritCount, imgDigest:imgDigest,
-             acctOwner:acctOwner, acctName:acctName, clusterAccount:{},
+             ec2s:ec2s, images:images,
+             acctOwner:acctOwner, acctName:acctName, acctBranch:acctBranch, acctSection:acctSection,
+             acctWorkloadOwner:acctWorkloadOwner, acctCoverage:acctCoverage, clusterAccount:{},
              eksAcctImg:eksAcctImg, eksAcctImgCrit:eksAcctImgCrit,
              overlapDigests:awsComputeOverlap(imgDigest,eksAcctImg),
              acctInventory:env.acctInventory?acctInventory:null,
@@ -3244,8 +3163,8 @@ function envNameUniverse(envs){ // every repo/namespace/account name present in 
   envs.forEach(function(env){
     if(env.type==='tenable') env.assets.forEach(function(a){ s[a.repo]=true; });
     else if(env.type==='aws'){
-      Object.keys(env.ec2Account).forEach(function(id){ s[env.ec2Account[id]]=true; });
-      Object.keys(env.imgAccount).forEach(function(id){ s[env.imgAccount[id]]=true; });
+      Object.keys(env.ec2s).forEach(function(id){ s[env.ec2s[id].account]=true; });
+      Object.keys(env.images).forEach(function(id){ s[env.images[id].account]=true; });
       Object.keys(env.eksAcctImg||{}).forEach(function(a){ s[a]=true; });
       Object.keys(env.acctOwner||{}).forEach(function(a){ s[a]=true; });
     }
@@ -3354,7 +3273,6 @@ wireDrop('hd-cog-btn','hd-cog-menu');
 wireDrop('rcog-btn','rcog-menu');
 wireDrop('acog-btn','acog-menu');
 wireDrop('ccog-btn','ccog-menu');
-wireDrop('aicog-btn','aicog-menu');
 wireDrop('repcog-btn','repcog-menu');
 
 (function(){
@@ -3368,7 +3286,6 @@ wireDrop('repcog-btn','repcog-menu');
   wireSearch('repo-search','repo',function(){ renderLeftTable(); });
   wireSearch('asset-search','asset',function(){ renderRightTable(); });
   wireSearch('comp-search','comp',function(){ renderCompTable(); });
-  wireSearch('acctinv-search','acctinv',function(){ renderAcctInvTable(); });
   wireSearch('rep-search','rep',function(){ renderReportTable(); });
 
   function wireMin(id, setter, rerender){
