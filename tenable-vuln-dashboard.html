@@ -715,8 +715,8 @@ var BAKED_STRIP  = new RegExp('<script[^>]*>\\s*window\\.' + BAKED_KEY + '\\s*=[
 // ══════════ SETUP STATE ══════════
 // Each environment block on the setup screen: name, scan type, and its file texts.
 var _envSeq = 0;
-function newSetupEnv(){ _envSeq++; return { id:'env'+_envSeq, name:'', type:'tenable', awsImportStyle:'inspector',
-  files:{assets:null,eol:null,rhacs:null,aws:null,eks:null,mapping:null,container:null,ec2inv:null,acctinv:null} }; }
+function newSetupEnv(){ _envSeq++; return { id:'env'+_envSeq, name:'', type:'tenable', awsImportStyle:'inspector', tenableImportStyle:'assets',
+  files:{assets:null,eol:null,rhacs:null,aws:null,eks:null,mapping:null,container:null,ec2inv:null,acctinv:null,vulndetail:null} }; }
 var setup = { reposText:null, envs:[ newSetupEnv() ] };
 
 // ══════════ DASHBOARD STATE ══════════
@@ -909,6 +909,13 @@ function saveSettings(){
 }
 
 // ══════════ SETUP SCREEN — ENVIRONMENT BLOCKS ══════════
+var TENABLE_ASSETS_SLOTS=[
+  { key:'assets', label:'Assets.csv', optional:false, icon:'&#128196;' },
+  { key:'eol',    label:'EOL.csv',    optional:true,  icon:'&#9888;' }
+];
+var TENABLE_VULNDETAIL_SLOTS=[
+  { key:'vulndetail', label:'Vuln Detail CSV', optional:false, icon:'&#128196;' }
+];
 var AWS_INSPECTOR_SLOTS=[
   { key:'aws',     label:'AWS Inspector CSV', optional:false, icon:'&#128196;' },
   { key:'eks',     label:'EKS Scans CSV',     optional:true,  icon:'&#9888;' },
@@ -922,9 +929,7 @@ var AWS_TARGETED_SLOTS=[
   { key:'mapping',    label:'Mapping CSV',             optional:true, icon:'&#9888;' }
 ];
 var ENV_TYPES = {
-  tenable: { label:'Tenable', slots:[
-    { key:'assets', label:'Assets.csv', optional:false, icon:'&#128196;' },
-    { key:'eol',    label:'EOL.csv',    optional:true,  icon:'&#9888;' } ] },
+  tenable: { label:'Tenable', slots:TENABLE_ASSETS_SLOTS },
   rhacs:   { label:'RHACS', slots:[
     { key:'rhacs',  label:'RHACS.csv',  optional:false, icon:'&#128196;' } ] },
   aws:     { label:'AWS Inspector', slots:AWS_INSPECTOR_SLOTS }
@@ -940,12 +945,16 @@ function setEnvType(id,type){
   var e=findSetupEnv(id); if(!e||e.type===type) return;
   e.type=type;
   e.awsImportStyle='inspector';
+  e.tenableImportStyle='assets';
   // Switching type clears that block's file state — the old files no longer apply.
-  e.files={assets:null,eol:null,rhacs:null,aws:null,eks:null,mapping:null,container:null,ec2inv:null,acctinv:null};
+  e.files={assets:null,eol:null,rhacs:null,aws:null,eks:null,mapping:null,container:null,ec2inv:null,acctinv:null,vulndetail:null};
   renderEnvBlocks();
 }
 function awsSlotsFor(e){
   return e.awsImportStyle==='targeted' ? AWS_TARGETED_SLOTS : AWS_INSPECTOR_SLOTS;
+}
+function tenableSlotsFor(e){
+  return e.tenableImportStyle==='vulndetail' ? TENABLE_VULNDETAIL_SLOTS : TENABLE_ASSETS_SLOTS;
 }
 function formatFileSize(n){
   if(!n&&n!==0) return '';
@@ -964,12 +973,21 @@ function setAwsImportStyle(id,style){
   else { e.files.container=null; e.files.ec2inv=null; e.files.acctinv=null; }
   renderEnvBlocks();
 }
+function setTenableImportStyle(id,style){
+  var e=findSetupEnv(id); if(!e) return;
+  style=(style==='vulndetail')?'vulndetail':'assets';
+  if(e.tenableImportStyle===style) return;
+  e.tenableImportStyle=style;
+  if(style==='vulndetail'){ e.files.assets=null; e.files.eol=null; }
+  else e.files.vulndetail=null;
+  renderEnvBlocks();
+}
 function renderEnvBlocks(){
   var c=document.getElementById('env-blocks'); if(!c) return;
   c.innerHTML='';
   setup.envs.forEach(function(e,idx){
-    var isAwsBlk=e.type==='aws';
-    var slotDefs=isAwsBlk?awsSlotsFor(e):ENV_TYPES[e.type].slots;
+    var isAwsBlk=e.type==='aws', isTenableBlk=e.type==='tenable';
+    var slotDefs=isAwsBlk?awsSlotsFor(e):(isTenableBlk?tenableSlotsFor(e):ENV_TYPES[e.type].slots);
     var blk=document.createElement('div');
     blk.className='env-block';
     var head='<div class="env-block-head">'+
@@ -986,7 +1004,12 @@ function renderEnvBlocks(){
        '<div class="env-type-switch aws-style-switch">'+
          '<button data-s="inspector" class="'+((e.awsImportStyle||'inspector')==='inspector'?'active':'')+'">Full Inspector Export</button>'+
          '<button data-s="targeted" class="'+(e.awsImportStyle==='targeted'?'active':'')+'">Targeted CSVs</button>'+
-       '</div></div>') : '';
+       '</div></div>') : (isTenableBlk ?
+      ('<div class="aws-style-row"><span class="aws-style-label">Import style</span>'+
+       '<div class="env-type-switch aws-style-switch">'+
+         '<button data-ts="assets" class="'+((e.tenableImportStyle||'assets')==='assets'?'active':'')+'">Assets + EOL CSVs</button>'+
+         '<button data-ts="vulndetail" class="'+(e.tenableImportStyle==='vulndetail'?'active':'')+'">Vuln Detail CSV</button>'+
+       '</div></div>') : '');
     var slotCls = slotDefs.length===1?'one':(slotDefs.length===2?'two':'three');
     var slots='<div class="upload-slots env-slots '+slotCls+'">';
     slotDefs.forEach(function(s){
@@ -1012,6 +1035,7 @@ function renderEnvBlocks(){
     for(var i=0;i<tbs.length;i++){
       (function(b){ b.addEventListener('click',function(){
         if(b.hasAttribute('data-s')) setAwsImportStyle(e.id,b.getAttribute('data-s'));
+        else if(b.hasAttribute('data-ts')) setTenableImportStyle(e.id,b.getAttribute('data-ts'));
         else setEnvType(e.id,b.getAttribute('data-t'));
       }); })(tbs[i]);
     }
@@ -1053,6 +1077,7 @@ function envRequiredMet(e){
     if(e.awsImportStyle==='targeted') return !!(e.files.container||e.files.ec2inv||e.files.acctinv);
     return !!e.files.aws;
   }
+  if(e.tenableImportStyle==='vulndetail') return !!e.files.vulndetail;
   return !!e.files.assets;
 }
 function syncGenerateBtn(){
@@ -1277,6 +1302,7 @@ function parseOwner(s){ return s.trim().replace(/^\[/,'').replace(/\]$/,'').trim
 
 // ══════════ ENVIRONMENT BUILDERS ══════════
 function buildTenableEnv(se,onProgress){
+  if(se.tenableImportStyle==='vulndetail') return buildTenableVulnDetailEnv(se,onProgress);
   var nextP=makeMultiFileProgress([se.files.assets,se.files.eol],onProgress);
   var assets=[];
   streamCSVSource(se.files.assets,function(r){
@@ -1311,6 +1337,61 @@ function buildTenableEnv(se,onProgress){
     });
   } else { nextP()(1); }
   return { id:se.id, name:se.name, type:'tenable', hasEOL:hasEOL, assets:assets };
+}
+// Tenable Vuln Detail CSV: one row per (asset, finding) instead of Assets.csv's
+// one row per asset — an alternative to the Assets.csv + EOL.csv pair, not an
+// addition to it. Critical/High/Medium/Low become per-asset counts (deduped
+// by the Plugin ID column when the file has one, same fallback-to-row-count
+// philosophy used for EKS/RHACS when no finding identifier is available).
+// EOL detection is per-row: a real (non-"N/A") Security End of Life Date
+// together with an OS-type CPE (cpe:/o:...) marks that asset end-of-life —
+// no separate EOL.csv needed. Rows with a severity the app doesn't track
+// (e.g. Tenable's "Info") still register the asset, just with no counts.
+function buildTenableVulnDetailEnv(se,onProgress){
+  var nextP=makeMultiFileProgress([se.files.vulndetail],onProgress);
+  var byAsset={}, order=[], idx=0;
+  streamCSVSource(se.files.vulndetail,function(r){
+    idx++;
+    var dns=col(r,'DNS Name','dns name','hostname');
+    var ip=col(r,'IP Address','ip address','ip');
+    if(!dns&&!ip) return;
+    var repo=col(r,'Repository','repo'); if(!repo) return;
+    var key=(dns||ip).toLowerCase();
+    if(!byAsset[key]){
+      byAsset[key]={ asset:dns||ip, dns:dns, ip:ip, repo:repo,
+        critSet:{}, highSet:{}, medSet:{}, lowSet:{}, isEOL:false, eolPlugin:'' };
+      order.push(key);
+    }
+    var a=byAsset[key];
+    var sev=col(r,'Severity','severity').toUpperCase();
+    var pluginId=col(r,'Plugin','plugin');
+    var dedupeKey=pluginId||('row'+idx);
+    if(sev==='CRITICAL') a.critSet[dedupeKey]=1;
+    else if(sev==='HIGH') a.highSet[dedupeKey]=1;
+    else if(sev==='MEDIUM'||sev==='MED') a.medSet[dedupeKey]=1;
+    else if(sev==='LOW') a.lowSet[dedupeKey]=1;
+    // Any other severity (e.g. "Info") is still a real scanned asset, just
+    // not counted toward any of the four tracked severities.
+    if(!a.isEOL){
+      var eolDate=col(r,'Security End of Life Date','security end of life date');
+      var cpe=col(r,'CPE','cpe');
+      if(eolDate&&eolDate.toUpperCase()!=='N/A'&&/^cpe:\/o:/i.test(cpe||'')){
+        a.isEOL=true;
+        a.eolPlugin=col(r,'Plugin Name','plugin name')||'';
+      }
+    }
+  },nextP());
+  var assets=order.map(function(key){
+    var a=byAsset[key];
+    return { asset:a.asset, dns:a.dns, ip:a.ip, repo:a.repo,
+      critical:setSize(a.critSet), high:setSize(a.highSet), medium:setSize(a.medSet), low:setSize(a.lowSet),
+      isEOL:a.isEOL, eolPlugin:a.eolPlugin };
+  });
+  if(!assets.length) throw new Error('No valid asset rows found in "'+se.name+'" (Tenable Vuln Detail).');
+  // The format inherently supports EOL detection per row, unlike bare
+  // Assets.csv — so EOL is treated as "known" for this environment even if
+  // this particular scan happens to have zero EOL assets right now.
+  return { id:se.id, name:se.name, type:'tenable', hasEOL:true, assets:assets };
 }
 function buildRhacsEnv(se,onProgress){
   // Index structures are the canonical data; every table/stat derives from
@@ -1384,14 +1465,26 @@ function findColKeyContains(sampleRow,substr){
 }
 // Recomputes, from (possibly trimmed) imgDigest/eksAcctImg structures, the
 // set of normalized digests present in BOTH Inspector and EKS data.
-function awsComputeOverlap(imgDigest,eksAcctImg){
-  var eksDigestSet={};
-  Object.keys(eksAcctImg||{}).forEach(function(a){
-    Object.keys(eksAcctImg[a]).forEach(function(d){ eksDigestSet[awsNormDigest(d)]=true; });
+// Which (account, digest) pairs are found by BOTH Inspector/container-inventory
+// AND the EKS scan — computed per account, not globally by digest alone. The
+// same image can be used across many accounts but only show up in both scans
+// for SOME of them; a global digest-only overlap would incorrectly exclude
+// that image everywhere it appears, including accounts where only one source
+// ever found it and there's nothing to "prefer" instead.
+function awsComputeOverlap(images,eksAcctImg){
+  var byAccountInsp={}; // account -> {digest:true}, built in one pass
+  Object.keys(images||{}).forEach(function(id){
+    var im=images[id]; if(!im.digest) return;
+    if(!byAccountInsp[im.account]) byAccountInsp[im.account]={};
+    byAccountInsp[im.account][im.digest]=true;
   });
-  var overlap={};
-  Object.keys(imgDigest||{}).forEach(function(resId){
-    var d=imgDigest[resId]; if(d&&eksDigestSet[d]) overlap[d]=true;
+  var overlap={}; // account -> {normalizedDigest: true}
+  Object.keys(eksAcctImg||{}).forEach(function(acct){
+    var inspSet=byAccountInsp[acct]; if(!inspSet) return;
+    Object.keys(eksAcctImg[acct]).forEach(function(d){
+      var nd=awsNormDigest(d);
+      if(inspSet[nd]){ if(!overlap[acct]) overlap[acct]={}; overlap[acct][nd]=true; }
+    });
   });
   return overlap;
 }
@@ -1548,12 +1641,14 @@ function buildAwsEnv(se,onProgress){
       var digest=col(r,'image_digest','Image Digest','image digest');
       var host=col(r,'monitoring_host_name','Monitoring Host Name','monitoring host name');
       var sev=col(r,'severity','Severity').toUpperCase();
+      var repo=col(r,'image_repository','Image Repository','image repository','repository','Repository');
       eksIdx++;
       if(!digest||!host) return;
       var hostTrim=host.trim();
       var acct=clusterAccount[hostTrim.toLowerCase()]||hostTrim; // unmapped cluster: use its name as the account label
       if(!eksAcctImg[acct]) eksAcctImg[acct]={};
-      eksAcctImg[acct][digest]=true;
+      if(eksAcctImg[acct][digest]===undefined) eksAcctImg[acct][digest]=repo||'';
+      else if(!eksAcctImg[acct][digest]&&repo) eksAcctImg[acct][digest]=repo; // fill in from a later row if the first row didn't have it
       if(sev==='CRITICAL'){
         if(!eksAcctImgCrit[acct]) eksAcctImgCrit[acct]={};
         if(!eksAcctImgCrit[acct][digest]) eksAcctImgCrit[acct][digest]={};
@@ -1600,9 +1695,7 @@ function buildAwsEnv(se,onProgress){
   var acctCoverage={};
   if(acctInventoryOut) acctInventoryOut.forEach(function(r){ if(r.coverage) acctCoverage[r.account]=r.coverage; });
 
-  var imgDigestOut={};
-  Object.keys(images).forEach(function(id){ if(images[id].digest) imgDigestOut[id]=images[id].digest; });
-  var overlapDigests=awsComputeOverlap(imgDigestOut,eksAcctImgOut);
+  var overlapDigests=awsComputeOverlap(images,eksAcctImgOut);
 
   return { id:se.id, name:se.name, type:'aws', hasEOL:false, awsImportStyle:se.awsImportStyle||'inspector',
            ec2s:ec2s, images:images,
@@ -1625,7 +1718,7 @@ function buildAwsEnv(se,onProgress){
 var WORKER_FN_LIST = [col, makeCSVStreamer, streamParseCSV, fileByteSize, streamCSVSource, makeMultiFileProgress,
   findColKey, findColKeyContains, setSize,
   awsImageName, awsRepoFromResourceId, awsNormDigest, awsDigestFromResourceId, awsComputeOverlap, awsCritOf,
-  buildTenableEnv, buildRhacsEnv, buildAwsEnv];
+  buildTenableEnv, buildTenableVulnDetailEnv, buildRhacsEnv, buildAwsEnv];
 var WORKER_ONMESSAGE = "\nself.onmessage = function(ev){\n" +
   "  var m = ev.data, se = m.se;\n" +
   "  function progress(frac){ postMessage({ id:m.id, kind:'progress', progress:frac }); }\n" +
@@ -2236,19 +2329,21 @@ function awsAccountSet(env,nameSet,filterSet){
   return out;
 }
 // Whether an Inspector ECR image (by resource id) should be excluded because
-// the same image (by digest) is also present in the EKS scan and the user
-// has chosen to count it from EKS only.
+// the same image (by digest), FOR THE SAME ACCOUNT, is also present in the
+// EKS scan and the user has chosen to count it from EKS only. Checked per
+// account, since the same image can be used across many accounts but only
+// show up in both scans for some of them.
 function awsInspectorImgExcluded(env,resId){
   if(!awsDedup.exclusive||awsDedup.prefer!=='eks') return false;
-  var d=env.images[resId]&&env.images[resId].digest;
-  return !!(d&&(env.overlapDigests||{})[d]);
+  var im=env.images[resId]; if(!im||!im.digest) return false;
+  return !!((env.overlapDigests||{})[im.account]||{})[im.digest];
 }
-// Whether an EKS image (by raw digest) should be excluded because the same
-// image is also present in Inspector's ECR scan and the user has chosen to
-// count it from Inspector only.
-function awsEksImgExcluded(env,digest){
+// Whether an EKS image (by raw digest), FOR THE SAME ACCOUNT, should be
+// excluded because the same image is also present in Inspector's ECR scan
+// and the user has chosen to count it from Inspector only.
+function awsEksImgExcluded(env,account,digest){
   if(!awsDedup.exclusive||awsDedup.prefer!=='inspector') return false;
-  return !!(env.overlapDigests||{})[awsNormDigest(digest)];
+  return !!((env.overlapDigests||{})[account]||{})[awsNormDigest(digest)];
 }
 // Everything the AWS Asset View shows, derived from the env's indexes for a
 // given account set — so Owner scoping and account filters recompute
@@ -2291,10 +2386,11 @@ function awsCompute(env,acctSet){
     if(!acctSet[a]) return;
     var ag=acct(a);
     Object.keys(env.eksAcctImg[a]).forEach(function(d){
-      if(awsEksImgExcluded(env,d)) return; // same image counted from Inspector instead
+      if(awsEksImgExcluded(env,a,d)) return; // same image counted from Inspector instead
       var crit=((env.eksAcctImgCrit||{})[a]||{})[d]||0;
       ag.eksImages++; ag.eksCrit+=crit;
-      liveAssets.push({ name:'sha256:'+awsNormDigest(d), kind:'EKS Image', account:a, accountLabel:acctDisplay(a), repo:'', crit:crit });
+      liveAssets.push({ name:'sha256:'+awsNormDigest(d), kind:'EKS Image', account:a, accountLabel:acctDisplay(a),
+        repo:(typeof env.eksAcctImg[a][d]==='string'?env.eksAcctImg[a][d]:''), crit:crit });
     });
   });
   var accountsArr=Object.keys(accounts).map(function(k){
@@ -2439,8 +2535,7 @@ function renderStats(){
         '<div class="stat-sub">across '+sa.accountCount+' account'+(sa.accountCount===1?'':'s')+'</div></div>'+
         awsBreakdownHTML('ec2')+'</div></div>'+
       '<div class="stat-card c-assets">'+fb+'<div class="stat-card-inner"><div class="stat-card-main">'+
-        '<div class="stat-label">Total Live Images</div><div class="stat-value">'+(sa.liveImgs+sa.eksImages)+'</div>'+
-        '<div class="stat-sub">'+sa.dormantImgs+' dormant image'+(sa.dormantImgs===1?'':'s')+' not shown here</div></div>'+
+        '<div class="stat-label">Total Deployed Images</div><div class="stat-value">'+(sa.liveImgs+sa.eksImages)+'</div></div>'+
         awsBreakdownHTML('liveImgs')+'</div></div>'+
       '<div class="stat-card c-crit">'+fb+'<div class="stat-card-inner"><div class="stat-card-main">'+
         '<div class="stat-label">Critical Vulns (Live Assets)</div><div class="stat-value">'+sa.crit+'</div>'+
@@ -2813,7 +2908,7 @@ function updateChips(){
 // ══════════ REPORT VIEW — CROSS-ENVIRONMENT ENTITIES ══════════
 // One row per Tenable repository (assets = host count) or RHACS namespace
 // (assets = image count), across every environment simultaneously.
-function allEntities(){
+function allEntities(exportMode){
   if(D.aggMode) return (D.aggEntities||[]).slice();
   var nameSet=ownerNameSet(), out=[];
   var af=activeEnv(), filters=setSize(repoFilters)?repoFilters:null;
@@ -2822,14 +2917,22 @@ function allEntities(){
     var isActive=af&&env.id===af.id;
     if(env.type==='tenable'){
       var assets=nameSet?env.assets.filter(function(a){return nameSet[a.repo];}):env.assets;
-      if(filters&&isActive) assets=assets.filter(function(a){return filters[a.repo];});
+      if(filters){
+        if(isActive) assets=assets.filter(function(a){return filters[a.repo];});
+        // A chip filter set on the active environment must not leave OTHER
+        // environments' data fully unfiltered in an exported snapshot — that
+        // would defeat the purpose of a scoped export. Live viewing keeps
+        // other environments as-is, since the filter is understood to apply
+        // only within the environment currently being looked at.
+        else if(exportMode) assets=[];
+      }
       repoAggregates(assets).forEach(function(r){
         out.push({ name:r.repo, env:env.name, envType:'tenable', owner:r.owner,
                    assets:r.assets, crit:r.crit, avg:r.avg,
                    eol:r.eol, eolPct:r.eolPct, eolKnown:!!env.hasEOL });
       });
     } else if(env.type==='aws'){
-      var acctSet=awsAccountSet(env,nameSet,(filters&&isActive)?filters:null);
+      var acctSet=(exportMode&&filters&&!isActive)?{}:awsAccountSet(env,nameSet,(filters&&isActive)?filters:null);
       awsCompute(env,acctSet).accounts.forEach(function(a){
         var liveN=a.ec2+a.liveImgs+a.eksImages, liveCrit=a.ec2Crit+a.liveCrit+a.eksCrit;
         out.push({ name:a.name||a.account, env:env.name, envType:'aws', owner:a.owner,
@@ -2837,7 +2940,7 @@ function allEntities(){
                    eol:0, eolPct:0, eolKnown:false });
       });
     } else {
-      var nsSet=rhacsNsSet(env,nameSet,(filters&&isActive)?filters:null);
+      var nsSet=(exportMode&&filters&&!isActive)?{}:rhacsNsSet(env,nameSet,(filters&&isActive)?filters:null);
       rhacsCompute(env,nsSet).namespaces.forEach(function(n){
         out.push({ name:n.ns, env:env.name, envType:'rhacs', owner:n.owner,
                    assets:n.images, crit:n.crit, avg:n.avg,
@@ -2847,16 +2950,20 @@ function allEntities(){
   });
   return out;
 }
-function reportStats(){
+function reportStats(exportMode){
   if(D.aggMode) return D.aggStats;
   var nameSet=ownerNameSet(), af=activeEnv(), filters=setSize(repoFilters)?repoFilters:null;
-  var n=0, crit=0, eol=0, eolBase=0, ents=allEntities();
+  var n=0, crit=0, eol=0, eolBase=0, ents=allEntities(exportMode);
   ents.forEach(function(e){ n+=e.assets; crit+=e.crit; });
   D.envs.forEach(function(env){
     if(reportEnvOff[env.id]) return; // excluded from Report View
     if(env.type!=='tenable'||!env.hasEOL) return;
+    var isActive=af&&env.id===af.id;
     var assets=nameSet?env.assets.filter(function(a){return nameSet[a.repo];}):env.assets;
-    if(filters&&af&&env.id===af.id) assets=assets.filter(function(a){return filters[a.repo];});
+    if(filters){
+      if(isActive) assets=assets.filter(function(a){return filters[a.repo];});
+      else if(exportMode) assets=[]; // see allEntities() — a filter set elsewhere must not leak other envs' EOL figures into a scoped export
+    }
     assets.forEach(function(a){ eolBase++; if(a.isEOL) eol++; });
   });
   return { n:n, crit:crit, avg:n?crit/n:0, eol:eol,
@@ -3101,11 +3208,17 @@ function updateExportNote(){
 function scopeEnvForExport(env,nameSet,filters,isActive){
   if(env.type==='tenable'){
     var assets=nameSet?env.assets.filter(function(a){return nameSet[a.repo];}):env.assets;
-    if(filters&&isActive) assets=assets.filter(function(a){return filters[a.repo];});
+    if(filters){
+      if(isActive) assets=assets.filter(function(a){return filters[a.repo];});
+      // A chip filter set on the active environment must not leave OTHER
+      // environments' data fully unfiltered in the export — that defeats
+      // the purpose of a scoped export entirely.
+      else assets=[];
+    }
     return { id:env.id, name:env.name, type:'tenable', hasEOL:env.hasEOL, assets:assets };
   }
   if(env.type==='aws'){
-    var acctSet=awsAccountSet(env,nameSet,(filters&&isActive)?filters:null);
+    var acctSet=(filters&&!isActive)?{}:awsAccountSet(env,nameSet,(filters&&isActive)?filters:null);
     var ec2s={}, images={}, eksAcctImg={}, eksAcctImgCrit={};
     var acctOwner={}, acctName={}, acctBranch={}, acctSection={}, acctWorkloadOwner={}, acctCoverage={};
     Object.keys(env.ec2s).forEach(function(id){
@@ -3128,18 +3241,16 @@ function scopeEnvForExport(env,nameSet,filters,isActive){
     Object.keys(env.acctWorkloadOwner||{}).forEach(function(a){ if(acctSet[a]) acctWorkloadOwner[a]=env.acctWorkloadOwner[a]; });
     Object.keys(env.acctCoverage||{}).forEach(function(a){ if(acctSet[a]) acctCoverage[a]=env.acctCoverage[a]; });
     var acctInventory=(env.acctInventory||[]).filter(function(r){ return acctSet[r.account]; });
-    var imgDigest={};
-    Object.keys(images).forEach(function(id){ if(images[id].digest) imgDigest[id]=images[id].digest; });
     return { id:env.id, name:env.name, type:'aws', hasEOL:false, awsImportStyle:env.awsImportStyle||'inspector',
              ec2s:ec2s, images:images,
              acctOwner:acctOwner, acctName:acctName, acctBranch:acctBranch, acctSection:acctSection,
              acctWorkloadOwner:acctWorkloadOwner, acctCoverage:acctCoverage, clusterAccount:{},
              eksAcctImg:eksAcctImg, eksAcctImgCrit:eksAcctImgCrit,
-             overlapDigests:awsComputeOverlap(imgDigest,eksAcctImg),
+             overlapDigests:awsComputeOverlap(images,eksAcctImg),
              acctInventory:env.acctInventory?acctInventory:null,
              hasMapping:env.hasMapping, hasEks:env.hasEks, hasAcctInventory:env.hasAcctInventory };
   }
-  var nsSet=rhacsNsSet(env,nameSet,(filters&&isActive)?filters:null);
+  var nsSet=(filters&&!isActive)?{}:rhacsNsSet(env,nameSet,(filters&&isActive)?filters:null);
   var nsCluster={}, imgNs={}, imgCves={}, compIndex={};
   Object.keys(env.nsCluster).forEach(function(ns){ if(nsSet[ns]) nsCluster[ns]=env.nsCluster[ns]; });
   Object.keys(env.imgNs).forEach(function(img){
@@ -3204,7 +3315,7 @@ function exportDashboard(mode){
       // figures, so bake those and drop every asset/image/CVE-level record
       // entirely — no hostnames, IPs, image names, CVE ids, EOL plugin names,
       // owner maps or per-record data are included.
-      out.agg = { stats: reportStats(), entities: allEntities() };
+      out.agg = { stats: reportStats(true), entities: allEntities(true) };
       out.envs = [];
       out.owners = [];
       out.repoOwnerMap = {};
